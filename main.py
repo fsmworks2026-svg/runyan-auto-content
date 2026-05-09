@@ -105,8 +105,14 @@ class RunyanContentGenerator:
                 max_tokens=1000
             )
             
-            # JSONパース
-            scenario_json = json.loads(response.choices[0].message.content)
+            # マークダウンコードブロックを除去してJSONパース
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+                content = content.strip()
+            scenario_json = json.loads(content)
             return scenario_json
         
         except json.JSONDecodeError as e:
