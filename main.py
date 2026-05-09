@@ -167,46 +167,77 @@ PHOTO STYLE:
             print(f"❌ 画像生成エラー: {e}")
             return None
 
-    def create_video_from_image(self, image_url: str, scenario: dict) -> str:
-        """ElevenLabsのSeedanceで動画を生成"""
-        print("🎬 動画生成中...")
-        
-        # 注: 実装にはElevenLabs Seedance APIの詳細が必要
-        # 現在はプレースホルダー実装
-        
+    def create_video_from_image(self, image_path: str, scenario: dict) -> str:
+        """ElevenLabs Kling O3 で画像から動画を生成"""
+        print("🎬 動画生成中（Kling O3）...")
+
         try:
-            # 動画生成APIの呼び出し（ElevenLabs Seedance）
             headers = {
                 "xi-api-key": ELEVENLABS_API_KEY,
-                "Content-Type": "application/json"
             }
-            
-            payload = {
-                "image_url": image_url,
-                "prompt": scenario.get('scenario', ''),
-                "quality": "high",
-                "format": "mp4"
-            }
-            
-            # 仮のエンドポイント（実際にはElevenLabsドキュメント参照）
-            response = requests.post(
-                "https://api.elevenlabs.io/v1/generate-video",
-                json=payload,
-                headers=headers,
-                timeout=300
+
+            prompt = (
+                f"{scenario.get('scenario', '')} "
+                f"Mood: {scenario.get('mood', 'casual')}. "
+                f"Setting: {scenario.get('setting', '')}. "
+                f"Natural movement, realistic, Instagram reel style, 15 seconds."
             )
-            
-            if response.status_code == 200:
-                video_data = response.content
-                video_path = self.output_dir / f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
-                with open(video_path, 'wb') as f:
-                    f.write(video_data)
-                print(f"✅ 動画生成完了: {video_path}")
-                return str(video_path)
-            else:
-                print(f"❌ 動画生成失敗: {response.status_code} - {response.text}")
+
+            # 画像ファイルと生成パラメータをマルチパートで送信
+            with open(image_path, "rb") as img_file:
+                files = {
+                    "image": (Path(image_path).name, img_file, "image/png"),
+                }
+                data = {
+                    "model_id": "kling-o3",
+                    "prompt": prompt,
+                    "duration": "15",
+                    "aspect_ratio": "9:16",  # Instagram リール縦型
+                }
+                response = requests.post(
+                    "https://api.elevenlabs.io/v1/video-generation",
+                    headers=headers,
+                    files=files,
+                    data=data,
+                    timeout=30,
+                )
+
+            if response.status_code not in (200, 201):
+                print(f"❌ 動画生成リクエスト失敗: {response.status_code} - {response.text}")
                 return None
-        
+
+            generation_id = response.json().get("id")
+            print(f"  動画生成ジョブ開始: {generation_id}")
+
+            # 生成完了まで最大10分ポーリング
+            import time
+            for _ in range(60):
+                time.sleep(10)
+                status_res = requests.get(
+                    f"https://api.elevenlabs.io/v1/video-generation/{generation_id}",
+                    headers=headers,
+                    timeout=30,
+                )
+                status_data = status_res.json()
+                status = status_data.get("status")
+                print(f"  ステータス: {status}")
+
+                if status == "completed":
+                    video_url = status_data.get("video_url") or status_data.get("url")
+                    video_res = requests.get(video_url, timeout=120)
+                    video_path = self.output_dir / f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+                    with open(video_path, "wb") as f:
+                        f.write(video_res.content)
+                    print(f"✅ 動画生成完了: {video_path}")
+                    return str(video_path)
+
+                if status in ("failed", "error"):
+                    print(f"❌ 動画生成失敗: {status_data}")
+                    return None
+
+            print("❌ 動画生成タイムアウト（10分超過）")
+            return None
+
         except Exception as e:
             print(f"❌ 動画生成エラー: {e}")
             return None
