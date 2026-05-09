@@ -117,30 +117,21 @@ class RunyanContentGenerator:
             return None
 
     def generate_image(self, scenario: dict) -> str:
-        """ChatGPT Image 2.0で画像を生成"""
+        """参照画像をベースに gpt-image-1 で画像を生成（顔固定）"""
         print("🎨 画像生成中...")
-        
-        v = CHARACTER["visual"]
 
-        # メイクスタイルの説明マッピング
-        makeup_descriptions = {
-            "gachi": "full glam makeup: bold eye makeup with eyeliner and eyeshadow, defined brows, contoured face, glossy or matte lip color, false lashes or mascara — polished and put-together",
-            "natural": "light natural makeup: tinted moisturizer or BB cream, subtle mascara, light lip gloss or tinted balm, minimal contouring — fresh and effortless",
-            "suppin": "no makeup / bare face: clean clear skin, no visible cosmetics, natural brows, slightly shiny skin — honest and relatable look",
-        }
+        # メイクスタイルに対応する参照画像を選択
         makeup_style = scenario.get("makeup_style", "natural")
-        makeup_desc = makeup_descriptions.get(makeup_style, makeup_descriptions["natural"])
+        reference_images = {
+            "gachi":   Path("./キャラ画像/runyan_gachi.png"),
+            "natural": Path("./キャラ画像/runyan_natural.png"),
+            "suppin":  Path("./キャラ画像/runyan_suppin.png"),
+        }
+        reference_path = reference_images.get(makeup_style, reference_images["natural"])
 
         prompt = f"""
-A realistic Instagram photo of a 21-year-old Japanese university student named {CHARACTER['name']}.
-
-CHARACTER APPEARANCE (keep consistent every time):
-- Hair: {v['hair']}
-- Face: {v['face']}
-- Makeup today: {makeup_desc}
-- Body: {v['height']}, {v['figure']}
-- Fashion: {v['fashion']}
-- Overall vibe: {v['vibe']}
+Keep the exact same person as in the reference image — same face, same hair, same makeup style.
+Only change the scene, background, clothing, and pose to match the following:
 
 SCENE:
 - Setting: {scenario.get('setting', 'university campus')}
@@ -148,26 +139,30 @@ SCENE:
 - Scenario: {scenario.get('scenario', '')}
 
 PHOTO STYLE:
-- Shot like a real Instagram lifestyle photo
+- Realistic Instagram lifestyle photo
 - Natural lighting, good composition
-- NOT overly edited or artificial looking
-- Realistic proportions, authentic feel
-- Subject is a pretty Japanese young woman, naturally beautiful, not exaggerated anime style
+- Real photographic quality, not illustrated or anime style
 """
-        
+
         try:
-            response = self.openai_client.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                size="1024x1024",
-                quality="hd",
-                n=1
-            )
-            
-            image_url = response.data[0].url
-            print(f"✅ 画像生成完了: {image_url}")
-            return image_url
-        
+            with open(reference_path, "rb") as image_file:
+                response = self.openai_client.images.edit(
+                    model="gpt-image-1",
+                    image=image_file,
+                    prompt=prompt,
+                    size="1024x1024",
+                )
+
+            # base64 デコードして画像ファイルとして保存
+            import base64
+            image_data = base64.b64decode(response.data[0].b64_json)
+            image_path = self.output_dir / f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            with open(image_path, "wb") as f:
+                f.write(image_data)
+
+            print(f"✅ 画像生成完了: {image_path}")
+            return str(image_path)
+
         except Exception as e:
             print(f"❌ 画像生成エラー: {e}")
             return None
@@ -343,13 +338,13 @@ PHOTO STYLE:
         print(f"✅ シナリオ: {scenario.get('title')}")
         
         # Step 2: 画像生成
-        image_url = self.generate_image(scenario)
-        if not image_url:
+        image_path = self.generate_image(scenario)
+        if not image_path:
             print("❌ 画像生成失敗")
             return
-        
+
         # Step 3: 動画化
-        video_path = self.create_video_from_image(image_url, scenario)
+        video_path = self.create_video_from_image(image_path, scenario)
         if not video_path:
             print("❌ 動画生成失敗")
             return
