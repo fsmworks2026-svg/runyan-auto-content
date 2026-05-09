@@ -360,6 +360,27 @@ PHOTO STYLE:
         except Exception as e:
             print(f"❌ Discord通知エラー: {e}")
 
+    def send_discord_image(self, scenario: dict, image_path: str):
+        """生成した画像を Discord に送信する"""
+        print("💬 Discord に画像を送信中...")
+        try:
+            caption = scenario.get("caption", "")
+            hashtags = " ".join(scenario.get("hashtags", []))
+            content = f"**{scenario.get('title')}**\n{caption}\n{hashtags}"
+
+            with open(image_path, "rb") as img:
+                response = requests.post(
+                    DISCORD_WEBHOOK_URL,
+                    data={"content": content},
+                    files={"file": ("image.png", img, "image/png")},
+                )
+            if response.status_code in (200, 204):
+                print("✅ Discord に画像を送信しました")
+            else:
+                print(f"❌ Discord 送信失敗: {response.status_code}")
+        except Exception as e:
+            print(f"❌ Discord 画像送信エラー: {e}")
+
     def run_scenario_mode(self):
         """シナリオのみ生成してDiscordに投稿・ファイル保存（毎朝自動実行）"""
         print("=" * 50)
@@ -438,17 +459,11 @@ PHOTO STYLE:
             print("❌ 画像生成失敗")
             return
 
-        # 動画生成
-        video_path = self.create_video_from_image(image_path, scenario)
-        if not video_path:
-            print("❌ 動画生成失敗")
-            return
+        # 動画生成（TODO: ElevenLabs エンドポイント確認後に有効化）
+        # video_path = self.create_video_from_image(image_path, scenario)
 
-        # Google Drive保存（テスト中はスキップ）
-        drive_link = f"（Google Drive未設定）{video_path}"
-
-        # Discord に最終通知
-        self.send_discord_notification(scenario, video_path, drive_link)
+        # 画像を Discord に送信
+        self.send_discord_image(scenario, image_path)
 
         print("\n" + "=" * 50)
         print("✅ コンテンツ生成完了！Discord で確認してください")
