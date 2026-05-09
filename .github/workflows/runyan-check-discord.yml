@@ -1,0 +1,128 @@
+name: Runyan - Discord チェック（自動承認）
+
+on:
+  schedule:
+    # 10分ごとに実行
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Check Discord and trigger Step2 if approved
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_SCENARIO_CHANNEL_ID: "1502679588894019595"
+          GITHUB_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPO: "fsmworks2026-svg/runyan-auto-content"
+        run: |
+          python - <<'EOF'
+          import requests
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+          CHANNEL_ID = os.getenv("DISCORD_SCENARIO_CHANNEL_ID")
+          GITHUB_PAT = os.getenv("GITHUB_PAT")
+          GITHUB_REPO = os.getenv("GITHUB_REPO")
+
+          # current_scenario.json を読み込む
+          scenario_path = Path("current_scenario.json")
+          if not scenario_path.exists():
+              print("シナリオファイルなし。スキップ。")
+              sys.exit(0)
+
+          with open(scenario_path, encoding="utf-8") as f:
+              scenario = json.load(f)
+
+          # すでに処理済みならスキップ
+          if scenario.get("discord_status") != "pending":
+              print(f"ステータス: {scenario.get('discord_status')}。スキップ。")
+              sys.exit(0)
+
+          message_id = scenario.get("discord_message_id")
+          if not message_id:
+              print("メッセージIDなし。スキップ。")
+              sys.exit(0)
+
+          # シナリオ投稿後のメッセージを取得
+          headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+          res = requests.get(
+              f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages"
+              f"?after={message_id}&limit=20",
+              headers=headers,
+          )
+
+          if res.status_code != 200:
+              print(f"Discord API エラー: {res.status_code} {res.text}")
+              sys.exit(1)
+
+          messages = res.json()
+          if not messages:
+              print("新しいメッセージなし。次回チェックまで待機。")
+              sys.exit(0)
+
+          # 最古のメッセージから確認（ボットのメッセージは除外）
+          for msg in reversed(messages):
+              if msg.get("author", {}).get("bot"):
+                  continue
+
+              content = msg.get("content", "").strip()
+              if not content:
+                  continue
+
+              overrides = {}
+              if content.upper() == "OK" or content == "✅":
+                  print(f"承認メッセージを検出: {content}")
+              else:
+                  print(f"修正コメントを検出: {content}")
+                  overrides["override_scenario"] = content
+
+              # Step2 を起動
+              gh_res = requests.post(
+                  f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/runyan-generate.yml/dispatches",
+                  headers={
+                      "Authorization": f"token {GITHUB_PAT}",
+                      "Accept": "application/vnd.github.v3+json",
+                  },
+                  json={"ref": "master", "inputs": overrides},
+              )
+
+              if gh_res.status_code == 204:
+                  print("✅ Step2 を起動しました")
+                  # ステータスを更新
+                  scenario["discord_status"] = "approved"
+                  with open(scenario_path, "w", encoding="utf-8") as f:
+                      json.dump(scenario, f, ensure_ascii=False, indent=2)
+              else:
+                  print(f"❌ Step2 起動失敗: {gh_res.status_code} {gh_res.text}")
+                  sys.exit(1)
+
+              break  # 最初の有効メッセージだけ処理
+
+          EOF
+
+      - name: Save updated scenario status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add current_scenario.json
+          git diff --staged --quiet || (git commit -m "chore: シナリオステータスを更新" && git pull --rebase && git push)

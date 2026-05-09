@@ -391,10 +391,20 @@ PHOTO STYLE:
                 {"name": "💄 メイク", "value": makeup, "inline": True},
                 {"name": "💬 キャプション案", "value": scenario.get("caption", "N/A")[:250], "inline": False},
             ],
-            "footer": {"text": "✅ OKなら GitHub Actions で「Generate」ワークフローを手動実行してください"},
+            "footer": {"text": "「OK」で承認 / 修正内容をコメントで投稿してください（10分以内に自動反映）"},
         }
-        requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]})
-        print("✅ Discord にシナリオを投稿しました")
+
+        # ?wait=true でメッセージIDを取得して保存
+        res = requests.post(DISCORD_WEBHOOK_URL + "?wait=true", json={"embeds": [embed]})
+        if res.status_code == 200:
+            message_id = res.json().get("id")
+            scenario["discord_message_id"] = message_id
+            scenario["discord_status"] = "pending"
+            with open(scenario_path, "w", encoding="utf-8") as f:
+                json.dump(scenario, f, ensure_ascii=False, indent=2)
+            print(f"✅ Discord にシナリオを投稿しました（メッセージID: {message_id}）")
+        else:
+            print(f"❌ Discord 投稿失敗: {res.status_code}")
 
     def run_generate_mode(self):
         """保存済みシナリオから画像・動画を生成（手動実行）"""
