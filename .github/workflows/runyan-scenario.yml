@@ -1,9 +1,9 @@
 name: Runyan Step1 - シナリオ生成
 
 on:
-  schedule:
-    # 毎日 00:00 UTC（日本時間 09:00）に自動実行
-    - cron: '0 0 * * *'
+  # スケジュール一時停止中（動画生成完成後に再開）
+  # schedule:
+  #   - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
