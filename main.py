@@ -2,7 +2,7 @@
 """
 るーにゃ 自動コンテンツ生成パイプライン
 - シナリオ自動生成（Claude API）
-- 画像生成（ChatGPT Image 2.0）
+- 画像生成（gpt-image-2）
 - 動画化（ElevenLabs Seedance）
 - Google Drive保存
 - Discord通知
@@ -117,7 +117,7 @@ class RunyanContentGenerator:
             return None
 
     def generate_image(self, scenario: dict) -> str:
-        """参照画像をベースに gpt-image-1 で画像を生成（顔固定）"""
+        """参照画像をベースに gpt-image-2 で画像を生成（顔固定）"""
         print("🎨 画像生成中...")
 
         # メイクスタイルに対応する参照画像を選択
@@ -147,7 +147,7 @@ PHOTO STYLE:
         try:
             with open(reference_path, "rb") as image_file:
                 response = self.openai_client.images.edit(
-                    model="gpt-image-1",
+                    model="gpt-image-2",
                     image=image_file,
                     prompt=prompt,
                     size="1024x1024",
@@ -380,12 +380,10 @@ PHOTO STYLE:
             print("❌ 動画生成失敗")
             return
         
-        # Step 4: Google Drive保存
-        drive_link = self.save_to_google_drive(video_path)
-        if not drive_link:
-            print("❌ Google Drive保存失敗")
-            return
-        
+        # Step 4: Google Drive保存（テスト中はスキップ）
+        # drive_link = self.save_to_google_drive(video_path)
+        drive_link = f"（テスト実行 - Google Drive未設定）{video_path}"
+
         # Step 5: Discord通知（投稿前確認）
         self.send_discord_notification(scenario, video_path, drive_link)
         
