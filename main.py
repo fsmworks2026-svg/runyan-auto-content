@@ -73,6 +73,12 @@ class RunyanContentGenerator:
 【タスク】
 1日のInstagram短編リール用のシナリオを作成してください（15秒～30秒程度）
 
+【メイクスタイルの選択ルール】
+シナリオの場面に合わせて以下から1つ選んでください：
+- "gachi": ガチメイク（デート・夜遊び・おしゃれなカフェ・イベント等）
+- "natural": ナチュラルメイク（授業・買い物・友達とランチ・アルバイト等）
+- "suppin": すっぴん（家・起き抜け・勉強・だらだら系の場面等）
+
 【出力形式】
 {{
     "title": "シナリオのタイトル",
@@ -80,6 +86,7 @@ class RunyanContentGenerator:
     "caption": "Instagramのキャプション案",
     "mood": "雰囲気（happy/thoughtful/excited等）",
     "setting": "舞台設定（カフェ/大学/アルバイト先等）",
+    "makeup_style": "gachi / natural / suppin のいずれか",
     "key_dialogue": "キーセリフ（あれば）",
     "hashtags": ["#るーにゃ", "#大学生", ...]
 }}
@@ -114,12 +121,23 @@ class RunyanContentGenerator:
         print("🎨 画像生成中...")
         
         v = CHARACTER["visual"]
+
+        # メイクスタイルの説明マッピング
+        makeup_descriptions = {
+            "gachi": "full glam makeup: bold eye makeup with eyeliner and eyeshadow, defined brows, contoured face, glossy or matte lip color, false lashes or mascara — polished and put-together",
+            "natural": "light natural makeup: tinted moisturizer or BB cream, subtle mascara, light lip gloss or tinted balm, minimal contouring — fresh and effortless",
+            "suppin": "no makeup / bare face: clean clear skin, no visible cosmetics, natural brows, slightly shiny skin — honest and relatable look",
+        }
+        makeup_style = scenario.get("makeup_style", "natural")
+        makeup_desc = makeup_descriptions.get(makeup_style, makeup_descriptions["natural"])
+
         prompt = f"""
 A realistic Instagram photo of a 21-year-old Japanese university student named {CHARACTER['name']}.
 
-CHARACTER APPEARANCE (keep consistent):
+CHARACTER APPEARANCE (keep consistent every time):
 - Hair: {v['hair']}
 - Face: {v['face']}
+- Makeup today: {makeup_desc}
 - Body: {v['height']}, {v['figure']}
 - Fashion: {v['fashion']}
 - Overall vibe: {v['vibe']}
