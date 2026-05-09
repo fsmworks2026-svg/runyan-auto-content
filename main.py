@@ -36,7 +36,17 @@ CHARACTER = {
     "name": os.getenv("CHARACTER_NAME", "るーにゃ"),
     "age": int(os.getenv("CHARACTER_AGE", "21")),
     "birthday": os.getenv("CHARACTER_BIRTHDAY", "12月20日"),
-    "description": os.getenv("CHARACTER_DESCRIPTION", "21歳の大学3年生。上京してキャンパスデビューしたものの、ぼっち気味。")
+    "description": os.getenv("CHARACTER_DESCRIPTION", "21歳の大学3年生。上京してキャンパスデビューしたものの、ぼっち気味。"),
+
+    # ビジュアル設定（画像生成に使用）
+    "visual": {
+        "hair": "medium-length light brown semi-long hair, natural and slightly wavy",
+        "face": "pretty Japanese woman, naturally attractive facial features, soft and approachable, clean skin, minimal makeup with light foundation and subtle lip gloss",
+        "height": "157cm tall, slim average build, not muscular but not overweight, well-proportioned",
+        "figure": "bust 82cm D-cup, waist 60cm, hips 84cm, feminine silhouette",
+        "fashion": "trendy contemporary Japanese fashion, stylish casual outfits seen in Tokyo street style magazines",
+        "vibe": "girl-next-door charm, looks like a real university student, Instagram-worthy but not overly perfect",
+    }
 }
 
 class RunyanContentGenerator:
@@ -103,15 +113,28 @@ class RunyanContentGenerator:
         """ChatGPT Image 2.0で画像を生成"""
         print("🎨 画像生成中...")
         
+        v = CHARACTER["visual"]
         prompt = f"""
-Create a professional, Instagram-worthy image of {CHARACTER['name']}, a 21-year-old Japanese university student.
-Setting: {scenario.get('setting', 'university campus')}
-Mood: {scenario.get('mood', 'casual')}
-Style: realistic, contemporary, aesthetically pleasing
-Appearance: attractive young woman with modern fashion sense, looking polished and composed
-Scenario description: {scenario.get('scenario', '')}
+A realistic Instagram photo of a 21-year-old Japanese university student named {CHARACTER['name']}.
 
-Generate an image that looks like a real Instagram photo, with good composition and lighting.
+CHARACTER APPEARANCE (keep consistent):
+- Hair: {v['hair']}
+- Face: {v['face']}
+- Body: {v['height']}, {v['figure']}
+- Fashion: {v['fashion']}
+- Overall vibe: {v['vibe']}
+
+SCENE:
+- Setting: {scenario.get('setting', 'university campus')}
+- Mood: {scenario.get('mood', 'casual')}
+- Scenario: {scenario.get('scenario', '')}
+
+PHOTO STYLE:
+- Shot like a real Instagram lifestyle photo
+- Natural lighting, good composition
+- NOT overly edited or artificial looking
+- Realistic proportions, authentic feel
+- Subject is a pretty Japanese young woman, naturally beautiful, not exaggerated anime style
 """
         
         try:
