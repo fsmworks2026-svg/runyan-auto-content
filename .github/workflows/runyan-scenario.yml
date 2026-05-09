@@ -1,0 +1,43 @@
+name: Runyan Step1 - シナリオ生成
+
+on:
+  schedule:
+    # 毎日 00:00 UTC（日本時間 09:00）に自動実行
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate-scenario:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate scenario and post to Discord
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          CHARACTER_NAME: るーにゃ
+          CHARACTER_AGE: 21
+          CHARACTER_BIRTHDAY: 12月20日
+        run: |
+          python main.py scenario
+
+      - name: Save scenario file to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add current_scenario.json
+          git diff --staged --quiet || git commit -m "chore: 本日のシナリオを更新"
+          git push

@@ -360,44 +360,85 @@ PHOTO STYLE:
         except Exception as e:
             print(f"❌ Discord通知エラー: {e}")
 
-    def run(self):
-        """全体パイプラインの実行"""
+    def run_scenario_mode(self):
+        """シナリオのみ生成してDiscordに投稿・ファイル保存（毎朝自動実行）"""
         print("=" * 50)
-        print(f"🌟 るーにゃ自動コンテンツ生成開始 ({datetime.now()})")
+        print(f"📝 シナリオ確認モード開始 ({datetime.now()})")
         print("=" * 50)
-        
-        # Step 1: シナリオ生成
+
         scenario = self.generate_scenario()
         if not scenario:
             print("❌ シナリオ生成失敗")
             return
-        
-        print(f"✅ シナリオ: {scenario.get('title')}")
-        
-        # Step 2: 画像生成
+
+        # シナリオをファイルに保存（次のステップで使用）
+        scenario_path = Path("./current_scenario.json")
+        with open(scenario_path, "w", encoding="utf-8") as f:
+            json.dump(scenario, f, ensure_ascii=False, indent=2)
+        print(f"✅ シナリオ保存: {scenario_path}")
+
+        # Discord にシナリオを投稿して確認を求める
+        makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
+        makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
+
+        embed = {
+            "title": f"📋 今日のシナリオ確認: {scenario.get('title')}",
+            "description": scenario.get("scenario", ""),
+            "color": 0xFFAA00,
+            "fields": [
+                {"name": "🎭 舞台", "value": scenario.get("setting", "N/A"), "inline": True},
+                {"name": "🌈 ムード", "value": scenario.get("mood", "N/A"), "inline": True},
+                {"name": "💄 メイク", "value": makeup, "inline": True},
+                {"name": "💬 キャプション案", "value": scenario.get("caption", "N/A")[:250], "inline": False},
+            ],
+            "footer": {"text": "✅ OKなら GitHub Actions で「Generate」ワークフローを手動実行してください"},
+        }
+        requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]})
+        print("✅ Discord にシナリオを投稿しました")
+
+    def run_generate_mode(self):
+        """保存済みシナリオから画像・動画を生成（手動実行）"""
+        print("=" * 50)
+        print(f"🎬 コンテンツ生成モード開始 ({datetime.now()})")
+        print("=" * 50)
+
+        # 保存済みシナリオを読み込み
+        scenario_path = Path("./current_scenario.json")
+        if not scenario_path.exists():
+            print("❌ current_scenario.json が見つかりません。先にシナリオモードを実行してください")
+            return
+        with open(scenario_path, "r", encoding="utf-8") as f:
+            scenario = json.load(f)
+        print(f"✅ シナリオ読み込み: {scenario.get('title')}")
+
+        # 画像生成
         image_path = self.generate_image(scenario)
         if not image_path:
             print("❌ 画像生成失敗")
             return
 
-        # Step 3: 動画化
+        # 動画生成
         video_path = self.create_video_from_image(image_path, scenario)
         if not video_path:
             print("❌ 動画生成失敗")
             return
-        
-        # Step 4: Google Drive保存（テスト中はスキップ）
-        # drive_link = self.save_to_google_drive(video_path)
-        drive_link = f"（テスト実行 - Google Drive未設定）{video_path}"
 
-        # Step 5: Discord通知（投稿前確認）
+        # Google Drive保存（テスト中はスキップ）
+        drive_link = f"（Google Drive未設定）{video_path}"
+
+        # Discord に最終通知
         self.send_discord_notification(scenario, video_path, drive_link)
-        
+
         print("\n" + "=" * 50)
-        print("✅ コンテンツ生成完了！")
-        print("Discord で確認して、✅ または ❌ でリアクションしてください")
+        print("✅ コンテンツ生成完了！Discord で確認してください")
         print("=" * 50)
 
+
 if __name__ == "__main__":
+    import sys
+    mode = sys.argv[1] if len(sys.argv) > 1 else "scenario"
     generator = RunyanContentGenerator()
-    generator.run()
+    if mode == "generate":
+        generator.run_generate_mode()
+    else:
+        generator.run_scenario_mode()

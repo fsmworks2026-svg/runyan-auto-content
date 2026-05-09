@@ -1,10 +1,6 @@
-name: Runyan Daily Content Generation
+name: Runyan Step2 - 画像・動画生成
 
 on:
-  schedule:
-    # 毎日午前10時（UTC）に実行
-    - cron: '0 10 * * *'
-  # 手動実行も可能
   workflow_dispatch:
 
 jobs:
@@ -29,7 +25,7 @@ jobs:
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
 
-      - name: Run content generator
+      - name: Generate image and video
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
@@ -39,7 +35,7 @@ jobs:
           CHARACTER_AGE: 21
           CHARACTER_BIRTHDAY: 12月20日
         run: |
-          python main.py
+          python main.py generate
 
       - name: Upload generated content
         if: always()
@@ -47,9 +43,3 @@ jobs:
         with:
           name: generated-content
           path: generated_content/
-
-      - name: Notify completion
-        if: always()
-        run: |
-          echo "コンテンツ生成パイプライン完了"
-          echo "Discord通知を確認してください"
