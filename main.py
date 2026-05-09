@@ -153,7 +153,7 @@ PHOTO STYLE:
         try:
             with open(reference_path, "rb") as image_file:
                 response = self.openai_client.images.edit(
-                    model="gpt-image-2",
+                    model="gpt-image-1",
                     image=image_file,
                     prompt=prompt,
                     size="1024x1024",
