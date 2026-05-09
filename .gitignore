@@ -1,0 +1,59 @@
+# 環境変数
+.env
+.env.local
+.env.*.local
+
+# APIキーと認証情報
+credentials.json
+token.json
+*.key
+*.pem
+
+# 生成コンテンツ
+generated_content/
+*.mp4
+*.webm
+*.mov
+*.avi
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ログファイル
+*.log
+logs/
+
+# ローカルテスト
+test_*.py
+debug/
+
+# OSファイル
+Thumbs.db
+.DS_Store
