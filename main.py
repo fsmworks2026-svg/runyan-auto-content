@@ -409,6 +409,17 @@ PHOTO STYLE:
             return
         with open(scenario_path, "r", encoding="utf-8") as f:
             scenario = json.load(f)
+
+        # 環境変数で指定された上書き入力を反映
+        if os.getenv("OVERRIDE_TITLE"):
+            scenario["title"] = os.getenv("OVERRIDE_TITLE")
+        if os.getenv("OVERRIDE_SCENARIO"):
+            scenario["scenario"] = os.getenv("OVERRIDE_SCENARIO")
+        if os.getenv("OVERRIDE_SETTING"):
+            scenario["setting"] = os.getenv("OVERRIDE_SETTING")
+        if os.getenv("OVERRIDE_MAKEUP"):
+            scenario["makeup_style"] = os.getenv("OVERRIDE_MAKEUP")
+
         print(f"✅ シナリオ読み込み: {scenario.get('title')}")
 
         # 画像生成
