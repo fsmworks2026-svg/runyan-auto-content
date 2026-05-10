@@ -55,6 +55,10 @@ jobs:
           OVERRIDE_SCENARIO: ${{ github.event.inputs.override_scenario }}
           OVERRIDE_SETTING: ${{ github.event.inputs.override_setting }}
           OVERRIDE_MAKEUP: ${{ github.event.inputs.override_makeup }}
+          INSTAGRAM_PAGE_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_PAGE_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
+          INSTAGRAM_IMAGES_REPO: fsmworks2026-svg/runyan-images
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           python main.py generate
 

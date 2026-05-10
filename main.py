@@ -594,6 +594,20 @@ Mood: {scenario.get('mood', 'casual')}
         # 生成できた画像を Discord に送信
         self.send_discord_image(scenario, image_paths)
 
+        # Instagram にカルーセル投稿（環境変数が設定されている場合のみ）
+        if os.getenv("INSTAGRAM_PAGE_ACCESS_TOKEN") and os.getenv("INSTAGRAM_BUSINESS_ACCOUNT_ID"):
+            print("\n📸 Instagram投稿中...")
+            try:
+                from instagram_poster import post_carousel_to_instagram
+                caption = scenario.get("caption", "")
+                hashtags = " ".join(scenario.get("hashtags", []))
+                full_caption = f"{caption}\n\n{hashtags}".strip()
+                post_carousel_to_instagram(image_paths, full_caption)
+            except Exception as e:
+                print(f"❌ Instagram投稿エラー（Discord通知は完了済み）: {e}")
+        else:
+            print("\n⏭️ Instagram投稿スキップ（INSTAGRAM_PAGE_ACCESS_TOKEN 未設定）")
+
         print("\n" + "=" * 50)
         print(f"✅ コンテンツ生成完了！{len(image_paths)}枚を Discord に送信しました")
         print("=" * 50)
