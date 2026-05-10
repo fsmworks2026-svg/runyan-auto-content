@@ -132,15 +132,16 @@ Instagramでのリール投稿用のコンテンツを作成しています。
     "setting": "舞台設定",
     "makeup_style": "gachi / natural / suppin のいずれか",
     "photo_style": "selfie / friend_shot のいずれか",
+    "outfit": "その日の服装を英語で簡潔に記述（例: ivory knit top, beige wide pants, white sneakers）。4枚全ショット共通で使用する。",
     "key_dialogue": "キーセリフ（視聴者が「あ、わかる」となるセリフ）",
     "save_reason": "このコンテンツが保存されるポイント",
     "share_element": "シェアされやすい要素（驚き・共感・笑い）",
     "interactive_element": "視聴者を参加させる要素（質問・選択肢等）",
     "shots": [
-        "1枚目：シーンの導入。場所・状況がわかるカット（例：カフェに入る、席に座る）",
-        "2枚目：メインシーン。感情や行動のピーク（例：コーヒーを持ってスマホを見る）",
-        "3枚目：表情クローズアップや小物（例：ドリンクとるーにゃの顔、手元のスマホ）",
-        "4枚目：オチや締めのカット（例：窓の外を眺める後ろ姿、ため息をつく表情）"
+        "1枚目：シーンの導入。場所・状況がわかるカット（英語で簡潔に）",
+        "2枚目：メインシーン。感情や行動のピーク（英語で簡潔に）",
+        "3枚目：表情クローズアップや小物（英語で簡潔に）",
+        "4枚目：オチや締めのカット（英語で簡潔に）"
     ],
     "hashtags": ["#るーにゃ", "#大学生", ...]
 }}
@@ -190,40 +191,68 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         }
         reference_path = reference_images.get(makeup_style, reference_images["natural"])
 
-        # 撮影スタイルをシナリオから取得
+        # メイクスタイルごとの固定描写
+        makeup_descriptions = {
+            "gachi": (
+                "glamorous full makeup, bold defined eye makeup with eyeliner and eyeshadow, "
+                "deep red or berry lips, contoured skin, dramatic lashes"
+            ),
+            "natural": (
+                "casual chic natural makeup, soft rosy cheeks, coral-beige lips, "
+                "light eye makeup, fresh youthful university student vibe"
+            ),
+            "suppin": (
+                "no makeup, bare natural skin, clean fresh face, "
+                "slight redness on cheeks, natural lip color, completely unmade-up"
+            ),
+        }
+        makeup_desc = makeup_descriptions.get(makeup_style, makeup_descriptions["natural"])
+
+        # 撮影スタイル
         photo_style = scenario.get("photo_style", "selfie")
         if photo_style == "friend_shot":
-            camera_style = (
-                "CAMERA STYLE: candid shot taken by a friend, natural third-person perspective, "
-                "feels like a real moment captured by someone else, slightly off-center, "
-                "relaxed and unposed, as if the subject didn't know the photo was being taken"
+            camera_block = (
+                "Candid shot taken by a friend. Natural third-person perspective. "
+                "Slightly off-center. Relaxed and unposed."
             )
         else:
-            camera_style = (
-                "CAMERA STYLE: selfie taken with front camera, arm extended slightly downward, "
-                "casual and intimate feel, slight downward angle typical of smartphone selfies, "
-                "the subject is looking directly at the camera"
+            camera_block = (
+                "Selfie taken with front camera. Arm extended slightly downward. "
+                "Slight downward angle. Subject looking directly at camera."
             )
 
-        # ショット固有の説明があれば追加
-        shot_detail = f"\nTHIS SHOT: {shot_description}" if shot_description else ""
+        # 服装（4枚共通）
+        outfit = scenario.get("outfit", "simple clean feminine outfit, beige or ivory tones")
 
-        prompt = f"""
-Keep the exact same person as in the reference image — same face, same hair, same makeup style.
-Only change the scene, background, clothing, and pose to match the following:
+        # ショット固有の説明
+        scene_block = shot_description if shot_description else scenario.get("setting", "university campus")
 
-SCENE:
-- Setting: {scenario.get('setting', 'university campus')}
-- Mood: {scenario.get('mood', 'casual')}
-- Scenario: {scenario.get('scenario', '')}
-{shot_detail}
+        prompt = f"""=== CHARACTER LOCK (do not change) ===
+Same person in all images.
+A 21-year-old Japanese woman named Ru-nya.
+Identical facial features across all scenes.
+Soft droopy eyes, natural Japanese facial structure.
+Small face, gentle jawline, subtle nose bridge.
+Long dark brown semi-long hair with natural loose waves.
+Thin straight bangs with slightly separated strands.
+Fair smooth skin.
+Same hairstyle, same bangs, same face proportions, same eye shape.
+Consistent character design. Character continuity.
 
-{camera_style}
+Makeup: {makeup_desc}
 
-PHOTO STYLE:
-- Realistic Instagram lifestyle photo
-- Natural lighting, good composition
-- Real photographic quality, not illustrated or anime style
+Outfit (same in all shots): {outfit}
+
+=== CAMERA / STYLE ===
+Photorealistic. Japanese cinematic realism.
+Vertical 9:16. Shot on 50mm lens.
+Shallow depth of field. Warm natural lighting.
+Instagram reel aesthetic.
+{camera_block}
+
+=== SCENE ===
+{scene_block}
+Mood: {scenario.get('mood', 'casual')}
 """
 
         try:
