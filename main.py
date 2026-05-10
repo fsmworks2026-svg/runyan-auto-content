@@ -191,67 +191,58 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         }
         reference_path = reference_images.get(makeup_style, reference_images["natural"])
 
-        # メイクスタイルごとの固定描写
-        makeup_descriptions = {
-            "gachi": (
-                "glamorous full makeup, bold defined eye makeup with eyeliner and eyeshadow, "
-                "deep red or berry lips, contoured skin, dramatic lashes"
-            ),
-            "natural": (
-                "casual chic natural makeup, soft rosy cheeks, coral-beige lips, "
-                "light eye makeup, fresh youthful university student vibe"
-            ),
-            "suppin": (
-                "no makeup, bare natural skin, clean fresh face, "
-                "slight redness on cheeks, natural lip color, completely unmade-up"
-            ),
+        # メイクスタイルごとの短い固定描写
+        makeup_lines = {
+            "gachi": "Glamorous full makeup.\nBold eye makeup.\nDefined lips.\nContoured skin.",
+            "natural": "Natural casual chic makeup.\nSoft rosy cheeks.\nCoral-beige lips.\nLight eye makeup.\nFresh youthful university student vibe.",
+            "suppin": "No makeup.\nBare natural skin.\nClean fresh face.\nNatural lip color.",
         }
-        makeup_desc = makeup_descriptions.get(makeup_style, makeup_descriptions["natural"])
+        makeup_text = makeup_lines.get(makeup_style, makeup_lines["natural"])
 
         # 撮影スタイル
         photo_style = scenario.get("photo_style", "selfie")
         if photo_style == "friend_shot":
-            camera_block = (
-                "Candid shot taken by a friend. Natural third-person perspective. "
-                "Slightly off-center. Relaxed and unposed."
-            )
+            camera_text = "Candid shot by a friend.\nNatural perspective.\nSlightly off-center."
         else:
-            camera_block = (
-                "Selfie taken with front camera. Arm extended slightly downward. "
-                "Slight downward angle. Subject looking directly at camera."
-            )
+            camera_text = "Selfie.\nFront camera.\nArm extended.\nSlight downward angle."
 
-        # 服装（4枚共通）
-        outfit = scenario.get("outfit", "simple clean feminine outfit, beige or ivory tones")
+        # 服装（4枚共通）と Scene
+        outfit = scenario.get("outfit", "simple feminine outfit, beige or ivory tones, soft knitwear")
+        scene_text = shot_description if shot_description else scenario.get("setting", "university campus")
 
-        # ショット固有の説明
-        scene_block = shot_description if shot_description else scenario.get("setting", "university campus")
+        prompt = f"""Same person in all images.
 
-        prompt = f"""=== CHARACTER LOCK (do not change) ===
-Same person in all images.
-A 21-year-old Japanese woman named Ru-nya.
-Identical facial features across all scenes.
-Soft droopy eyes, natural Japanese facial structure.
-Small face, gentle jawline, subtle nose bridge.
-Long dark brown semi-long hair with natural loose waves.
-Thin straight bangs with slightly separated strands.
+Ru-nya, 21-year-old Japanese woman.
+
+Consistent facial features across all scenes.
+Same hairstyle, same bangs, same eye shape, same face proportions.
+
+Soft slightly droopy eyes.
+Natural Japanese facial structure.
+Small face, gentle jawline.
 Fair smooth skin.
-Same hairstyle, same bangs, same face proportions, same eye shape.
-Consistent character design. Character continuity.
 
-Makeup: {makeup_desc}
+Long dark brown semi-long hair with natural loose waves.
+Thin airy bangs.
 
-Outfit (same in all shots): {outfit}
+{makeup_text}
 
-=== CAMERA / STYLE ===
-Photorealistic. Japanese cinematic realism.
-Vertical 9:16. Shot on 50mm lens.
-Shallow depth of field. Warm natural lighting.
+Wearing {outfit}.
+Same outfit as all other images.
+
+Photorealistic.
+Japanese cinematic realism.
+Warm natural light.
+50mm lens.
+Shallow depth of field.
+Soft bokeh.
 Instagram reel aesthetic.
-{camera_block}
+Vertical 9:16.
 
-=== SCENE ===
-{scene_block}
+{camera_text}
+
+Scene:
+{scene_text}
 Mood: {scenario.get('mood', 'casual')}
 """
 
