@@ -125,6 +125,12 @@ Instagramでのリール投稿用のコンテンツを作成しています。
     "save_reason": "このコンテンツが保存されるポイント",
     "share_element": "シェアされやすい要素（驚き・共感・笑い）",
     "interactive_element": "視聴者を参加させる要素（質問・選択肢等）",
+    "shots": [
+        "1枚目：シーンの導入。場所・状況がわかるカット（例：カフェに入る、席に座る）",
+        "2枚目：メインシーン。感情や行動のピーク（例：コーヒーを持ってスマホを見る）",
+        "3枚目：表情クローズアップや小物（例：ドリンクとるーにゃの顔、手元のスマホ）",
+        "4枚目：オチや締めのカット（例：窓の外を眺める後ろ姿、ため息をつく表情）"
+    ],
     "hashtags": ["#るーにゃ", "#大学生", ...]
 }}
 
@@ -159,9 +165,10 @@ Instagramでのリール投稿用のコンテンツを作成しています。
             print(f"❌ シナリオ生成エラー: {e}")
             return None
 
-    def generate_image(self, scenario: dict) -> str:
-        """参照画像をベースに gpt-image-2 で画像を生成（顔固定）"""
-        print("🎨 画像生成中...")
+    def generate_image(self, scenario: dict, shot_description: str = None, shot_index: int = 0) -> str:
+        """参照画像をベースに gpt-image-1 で画像を生成（顔固定）"""
+        label = f"({shot_index + 1}/4) " if shot_description else ""
+        print(f"🎨 画像生成中... {label}")
 
         # メイクスタイルに対応する参照画像を選択
         makeup_style = scenario.get("makeup_style", "natural")
@@ -187,6 +194,9 @@ Instagramでのリール投稿用のコンテンツを作成しています。
                 "the subject is looking directly at the camera"
             )
 
+        # ショット固有の説明があれば追加
+        shot_detail = f"\nTHIS SHOT: {shot_description}" if shot_description else ""
+
         prompt = f"""
 Keep the exact same person as in the reference image — same face, same hair, same makeup style.
 Only change the scene, background, clothing, and pose to match the following:
@@ -195,6 +205,7 @@ SCENE:
 - Setting: {scenario.get('setting', 'university campus')}
 - Mood: {scenario.get('mood', 'casual')}
 - Scenario: {scenario.get('scenario', '')}
+{shot_detail}
 
 {camera_style}
 
@@ -216,7 +227,7 @@ PHOTO STYLE:
             # base64 デコードして画像ファイルとして保存
             import base64
             image_data = base64.b64decode(response.data[0].b64_json)
-            image_path = self.output_dir / f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            image_path = self.output_dir / f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{shot_index + 1}.png"
             with open(image_path, "wb") as f:
                 f.write(image_data)
 
@@ -414,24 +425,35 @@ PHOTO STYLE:
         except Exception as e:
             print(f"❌ Discord通知エラー: {e}")
 
-    def send_discord_image(self, scenario: dict, image_path: str):
-        """生成した画像を Discord に送信する"""
-        print("💬 Discord に画像を送信中...")
+    def send_discord_image(self, scenario: dict, image_paths: list):
+        """生成した画像（複数）を Discord に送信する"""
+        print(f"💬 Discord に画像を送信中... ({len(image_paths)}枚)")
         try:
             caption = scenario.get("caption", "")
             hashtags = " ".join(scenario.get("hashtags", []))
             content = f"**{scenario.get('title')}**\n{caption}\n{hashtags}"
 
-            with open(image_path, "rb") as img:
-                response = requests.post(
-                    DISCORD_WEBHOOK_URL,
-                    data={"content": content},
-                    files={"file": ("image.png", img, "image/png")},
-                )
+            # Discord は1リクエストで最大10ファイル添付可能
+            files = {}
+            opened = []
+            for i, path in enumerate(image_paths):
+                f = open(path, "rb")
+                opened.append(f)
+                files[f"files[{i}]"] = (f"image_{i + 1}.png", f, "image/png")
+
+            response = requests.post(
+                DISCORD_WEBHOOK_URL,
+                data={"content": content},
+                files=files,
+            )
+
+            for f in opened:
+                f.close()
+
             if response.status_code in (200, 204):
-                print("✅ Discord に画像を送信しました")
+                print(f"✅ Discord に {len(image_paths)} 枚の画像を送信しました")
             else:
-                print(f"❌ Discord 送信失敗: {response.status_code}")
+                print(f"❌ Discord 送信失敗: {response.status_code} {response.text}")
         except Exception as e:
             print(f"❌ Discord 画像送信エラー: {e}")
 
@@ -522,20 +544,25 @@ PHOTO STYLE:
 
         print(f"✅ シナリオ読み込み: {scenario.get('title')}")
 
-        # 画像生成
-        image_path = self.generate_image(scenario)
-        if not image_path:
-            print("❌ 画像生成失敗")
+        # 4枚の画像を生成（ショット構成に沿って）
+        shots = scenario.get("shots", ["", "", "", ""])
+        image_paths = []
+        for i, shot in enumerate(shots[:4]):
+            image_path = self.generate_image(scenario, shot_description=shot, shot_index=i)
+            if image_path:
+                image_paths.append(image_path)
+            else:
+                print(f"⚠️ {i + 1}枚目の生成に失敗。スキップします")
+
+        if not image_paths:
+            print("❌ 画像生成が全て失敗しました")
             return
 
-        # 動画生成（TODO: ElevenLabs エンドポイント確認後に有効化）
-        # video_path = self.create_video_from_image(image_path, scenario)
-
-        # 画像を Discord に送信
-        self.send_discord_image(scenario, image_path)
+        # 生成できた画像を Discord に送信
+        self.send_discord_image(scenario, image_paths)
 
         print("\n" + "=" * 50)
-        print("✅ コンテンツ生成完了！Discord で確認してください")
+        print(f"✅ コンテンツ生成完了！{len(image_paths)}枚を Discord に送信しました")
         print("=" * 50)
 
 
