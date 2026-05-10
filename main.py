@@ -259,6 +259,8 @@ Mood: {scenario.get('mood', 'casual')}
             import base64
             image_data = base64.b64decode(response.data[0].b64_json)
             image_path = self.output_dir / f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{shot_index + 1}.png"
+            # ベース参照画像フォルダへの誤書き込みを防ぐガード
+            assert "キャラ画像" not in str(image_path), "ベース画像フォルダへの書き込みは禁止されています"
             with open(image_path, "wb") as f:
                 f.write(image_data)
 

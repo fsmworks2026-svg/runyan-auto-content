@@ -1,0 +1,16 @@
+name: ベース画像保護チェック
+
+on:
+  push:
+    paths:
+      - 'キャラ画像/**'
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ベース画像への変更を検出
+        run: |
+          echo "❌ キャラ画像/ フォルダのベース画像は変更禁止です"
+          echo "誤って変更した場合は git revert で元に戻してください"
+          exit 1
