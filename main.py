@@ -249,10 +249,10 @@ Mood: {scenario.get('mood', 'casual')}
         try:
             with open(reference_path, "rb") as image_file:
                 response = self.openai_client.images.edit(
-                    model="gpt-image-1",
+                    model="gpt-image-2",
                     image=image_file,
                     prompt=prompt,
-                    size="1024x1024",
+                    size="1024x1536",
                 )
 
             # base64 デコードして画像ファイルとして保存
@@ -458,13 +458,15 @@ Mood: {scenario.get('mood', 'casual')}
         except Exception as e:
             print(f"❌ Discord通知エラー: {e}")
 
-    def send_discord_image(self, scenario: dict, image_paths: list):
+    def send_discord_image(self, scenario: dict, image_paths: list, video_prompt: str = None):
         """生成した画像（複数）を Discord に送信する"""
         print(f"💬 Discord に画像を送信中... ({len(image_paths)}枚)")
         try:
             caption = scenario.get("caption", "")
             hashtags = " ".join(scenario.get("hashtags", []))
             content = f"**{scenario.get('title')}**\n{caption}\n{hashtags}"
+            if video_prompt:
+                content += f"\n\n🎬 **ElevenLabs/Kling 動画プロンプト:**\n```\n{video_prompt}\n```\n📤 動画完成後は <#1503066020745576660> にアップロードしてください"
 
             # Discord は1リクエストで最大10ファイル添付可能
             files = {}
@@ -551,8 +553,48 @@ Mood: {scenario.get('mood', 'casual')}
         else:
             print(f"❌ Discord 投稿失敗: {res.status_code}")
 
+    def generate_video_prompt(self, scenario: dict) -> str:
+        """ElevenLabs/Kling向けの動画生成プロンプトを生成"""
+        photo_style = scenario.get("photo_style", "selfie")
+        camera_note = (
+            "handheld candid style, filmed by a friend, natural perspective"
+            if photo_style == "friend_shot"
+            else "selfie style, front camera, arm extended"
+        )
+
+        response = self.openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert at writing prompts for AI video generation (Kling). Write concise, effective prompts in English describing natural movement and camera work. Output only the prompt text.",
+                },
+                {
+                    "role": "user",
+                    "content": f"""Write an image-to-video prompt for Kling based on this Instagram reel scenario:
+
+Title: {scenario.get('title')}
+Setting: {scenario.get('setting')}
+Mood: {scenario.get('mood')}
+Main scene: {scenario.get('shots', [''])[0]}
+Camera style: {camera_note}
+
+Requirements:
+- Natural realistic movement (slight head turn, hair movement, breathing)
+- Subtle camera motion matching the style
+- 5-10 seconds
+- Vertical 9:16 format
+- Japanese cinematic lifestyle aesthetic
+
+Output only the prompt, no explanation.""",
+                },
+            ],
+            max_tokens=200,
+        )
+        return response.choices[0].message.content.strip()
+
     def run_generate_mode(self):
-        """保存済みシナリオから画像・動画を生成（手動実行）"""
+        """保存済みシナリオからメイン画像1枚を生成してDiscordに通知"""
         print("=" * 50)
         print(f"🎬 コンテンツ生成モード開始 ({datetime.now()})")
         print("=" * 50)
@@ -577,39 +619,28 @@ Mood: {scenario.get('mood', 'casual')}
 
         print(f"✅ シナリオ読み込み: {scenario.get('title')}")
 
-        # 4枚の画像を生成（ショット構成に沿って）
-        shots = scenario.get("shots", ["", "", "", ""])
-        image_paths = []
-        for i, shot in enumerate(shots[:4]):
-            image_path = self.generate_image(scenario, shot_description=shot, shot_index=i)
-            if image_path:
-                image_paths.append(image_path)
-            else:
-                print(f"⚠️ {i + 1}枚目の生成に失敗。スキップします")
-
-        if not image_paths:
-            print("❌ 画像生成が全て失敗しました")
+        # メインショット（1枚目）を生成
+        shots = scenario.get("shots", [""])
+        main_shot = shots[0] if shots else ""
+        image_path = self.generate_image(scenario, shot_description=main_shot, shot_index=0)
+        if not image_path:
+            print("❌ 画像生成が失敗しました")
             return
 
-        # 生成できた画像を Discord に送信
-        self.send_discord_image(scenario, image_paths)
+        # ElevenLabs/Kling 用の動画プロンプトを生成
+        print("📝 動画プロンプト生成中...")
+        try:
+            video_prompt = self.generate_video_prompt(scenario)
+        except Exception as e:
+            print(f"⚠️ 動画プロンプト生成失敗: {e}")
+            video_prompt = f"{scenario.get('setting')} scene, natural movement, cinematic style, 9:16 vertical"
 
-        # Instagram にカルーセル投稿（環境変数が設定されている場合のみ）
-        if os.getenv("INSTAGRAM_PAGE_ACCESS_TOKEN") and os.getenv("INSTAGRAM_BUSINESS_ACCOUNT_ID"):
-            print("\n📸 Instagram投稿中...")
-            try:
-                from instagram_poster import post_carousel_to_instagram
-                caption = scenario.get("caption", "")
-                hashtags = " ".join(scenario.get("hashtags", []))
-                full_caption = f"{caption}\n\n{hashtags}".strip()
-                post_carousel_to_instagram(image_paths, full_caption)
-            except Exception as e:
-                print(f"❌ Instagram投稿エラー（Discord通知は完了済み）: {e}")
-        else:
-            print("\n⏭️ Instagram投稿スキップ（INSTAGRAM_PAGE_ACCESS_TOKEN 未設定）")
+        # 画像と動画プロンプトを Discord に送信
+        self.send_discord_image(scenario, [image_path], video_prompt=video_prompt)
 
         print("\n" + "=" * 50)
-        print(f"✅ コンテンツ生成完了！{len(image_paths)}枚を Discord に送信しました")
+        print("✅ 画像生成完了！ElevenLabsで動画を作成してください")
+        print(f"   動画完成後: Discord #video-uploads チャンネルに投稿してください")
         print("=" * 50)
 
 
