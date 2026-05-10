@@ -59,18 +59,23 @@ class RunyanContentGenerator:
         """Claude APIを使ってシナリオを自動生成（2025-2026 Instagramトレンド対応）"""
         print("📝 シナリオ生成中...")
 
-        # 曜日別コンテンツテーマ（多様性を確保）
-        day_of_week = datetime.now().weekday()  # 0=月, 6=日
-        theme_schedule = {
-            0: "グルメ・カフェ（月：新しい場所チャレンジ）",
-            1: "ファッション・コーディネート（火：推しコーデ）",
-            2: "美容・メイク（水：ビューティティップス）",
-            3: "推し活・グッズ（木：推し活ライフ）",
-            4: "ルームツアー・ライフスタイル（金：一人暮らしの工夫）",
-            5: "友達との時間・本音（土：友情エピソード＆本音）",
-            6: "素の日常・だらだら（日：ぼっち時間あるある）",
-        }
-        daily_theme = theme_schedule.get(day_of_week, "大学生の日常")
+        # THEME_OVERRIDE が指定されていればそれを使用、なければ曜日テーマを自動選択
+        theme_override = os.getenv("THEME_OVERRIDE", "").strip()
+        if theme_override:
+            daily_theme = theme_override
+            print(f"  テーマ上書き: {daily_theme}")
+        else:
+            day_of_week = datetime.now().weekday()  # 0=月, 6=日
+            theme_schedule = {
+                0: "グルメ・カフェ（月：新しい場所チャレンジ）",
+                1: "ファッション・コーディネート（火：推しコーデ）",
+                2: "美容・メイク（水：ビューティティップス）",
+                3: "推し活・グッズ（木：推し活ライフ）",
+                4: "ルームツアー・ライフスタイル（金：一人暮らしの工夫）",
+                5: "友達との時間・本音（土：友情エピソード＆本音）",
+                6: "素の日常・だらだら（日：ぼっち時間あるある）",
+            }
+            daily_theme = theme_schedule.get(day_of_week, "大学生の日常")
 
         prompt = f"""
 あなたは{CHARACTER['name']}という21歳の大学3年生キャラクターのシナリオライターです。

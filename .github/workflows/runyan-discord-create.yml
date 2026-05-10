@@ -1,0 +1,105 @@
+name: Runyan - Discord 新規リール作成コマンド
+
+on:
+  # スケジュール一時停止中（動画生成完成後に再開）
+  # schedule:
+  #   - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-create-command:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Discord の「新規:」コマンドを確認してStep1を起動
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_SCENARIO_CHANNEL_ID: "1502679588894019595"
+          GITHUB_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPO: "fsmworks2026-svg/runyan-auto-content"
+        run: |
+          python - <<'EOF'
+          import requests
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+          CHANNEL_ID = os.getenv("DISCORD_SCENARIO_CHANNEL_ID")
+          GITHUB_PAT = os.getenv("GITHUB_PAT")
+          GITHUB_REPO = os.getenv("GITHUB_REPO")
+
+          # 最後に処理したコマンドのメッセージIDを読み込む
+          state_path = Path("last_command_id.json")
+          state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {"last_id": "0"}
+          last_id = state.get("last_id", "0")
+
+          # チャンネルの最新20件を取得
+          headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+          res = requests.get(
+              f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages?limit=20",
+              headers=headers,
+          )
+          if res.status_code != 200:
+              print(f"Discord API エラー: {res.status_code} {res.text}")
+              sys.exit(1)
+
+          messages = res.json()
+
+          # 古い順に確認し、未処理の「新規:」コマンドを探す
+          for msg in reversed(messages):
+              if msg.get("author", {}).get("bot"):
+                  continue
+              if int(msg["id"]) <= int(last_id):
+                  continue
+
+              content = msg.get("content", "").strip()
+              if not content.startswith("新規:"):
+                  continue
+
+              theme = content[3:].strip()
+              print(f"新規リール作成コマンドを検出: {theme}")
+
+              # Step1 を theme_override 付きで起動
+              gh_res = requests.post(
+                  f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/runyan-scenario.yml/dispatches",
+                  headers={
+                      "Authorization": f"token {GITHUB_PAT}",
+                      "Accept": "application/vnd.github.v3+json",
+                  },
+                  json={"ref": "master", "inputs": {"theme_override": theme}},
+              )
+
+              if gh_res.status_code == 204:
+                  print(f"✅ Step1 を起動しました（テーマ: {theme}）")
+                  state["last_id"] = msg["id"]
+                  state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+              else:
+                  print(f"❌ Step1 起動失敗: {gh_res.status_code} {gh_res.text}")
+                  sys.exit(1)
+
+              break  # 最初のコマンドだけ処理
+
+          EOF
+
+      - name: 処理済みIDを保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_command_id.json
+          git diff --staged --quiet || (git commit -m "chore: Discord コマンド処理済みIDを更新" && git pull --rebase && git push)

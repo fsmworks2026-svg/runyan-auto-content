@@ -5,6 +5,11 @@ on:
   # schedule:
   #   - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      theme_override:
+        description: '今日のテーマを指定（例：カフェで友達と）。空欄で曜日テーマを自動選択'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -34,6 +39,7 @@ jobs:
           CHARACTER_NAME: るーにゃ
           CHARACTER_AGE: 21
           CHARACTER_BIRTHDAY: 12月20日
+          THEME_OVERRIDE: ${{ github.event.inputs.theme_override }}
         run: |
           python main.py scenario
 
