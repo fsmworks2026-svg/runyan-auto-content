@@ -108,6 +108,10 @@ Instagramでのリール投稿用のコンテンツを作成しています。
 - "natural": ナチュラルメイク（授業・買い物・友達とランチ・アルバイト等）
 - "suppin": すっぴん（家・起き抜け・勉強・だらだら系の場面等）
 
+【撮影スタイルの選択ルール】
+- "selfie": 一人のシーン（自撮り・前カメラ・腕を伸ばした感じ）
+- "friend_shot": 友達・複数人のいるシーン（友達に撮ってもらった自然な感じ）
+
 【出力形式】
 {{
     "title": "シナリオのタイトル",
@@ -116,6 +120,7 @@ Instagramでのリール投稿用のコンテンツを作成しています。
     "mood": "雰囲気（happy/thoughtful/excited/funny/relatable等）",
     "setting": "舞台設定",
     "makeup_style": "gachi / natural / suppin のいずれか",
+    "photo_style": "selfie / friend_shot のいずれか",
     "key_dialogue": "キーセリフ（視聴者が「あ、わかる」となるセリフ）",
     "save_reason": "このコンテンツが保存されるポイント",
     "share_element": "シェアされやすい要素（驚き・共感・笑い）",
@@ -167,6 +172,21 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         }
         reference_path = reference_images.get(makeup_style, reference_images["natural"])
 
+        # 撮影スタイルをシナリオから取得
+        photo_style = scenario.get("photo_style", "selfie")
+        if photo_style == "friend_shot":
+            camera_style = (
+                "CAMERA STYLE: candid shot taken by a friend, natural third-person perspective, "
+                "feels like a real moment captured by someone else, slightly off-center, "
+                "relaxed and unposed, as if the subject didn't know the photo was being taken"
+            )
+        else:
+            camera_style = (
+                "CAMERA STYLE: selfie taken with front camera, arm extended slightly downward, "
+                "casual and intimate feel, slight downward angle typical of smartphone selfies, "
+                "the subject is looking directly at the camera"
+            )
+
         prompt = f"""
 Keep the exact same person as in the reference image — same face, same hair, same makeup style.
 Only change the scene, background, clothing, and pose to match the following:
@@ -175,6 +195,8 @@ SCENE:
 - Setting: {scenario.get('setting', 'university campus')}
 - Mood: {scenario.get('mood', 'casual')}
 - Scenario: {scenario.get('scenario', '')}
+
+{camera_style}
 
 PHOTO STYLE:
 - Realistic Instagram lifestyle photo
@@ -433,6 +455,8 @@ PHOTO STYLE:
         # Discord にシナリオを投稿して確認を求める
         makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
         makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
+        photo_labels = {"selfie": "📱 自撮り", "friend_shot": "👫 友達に撮ってもらう"}
+        photo_style_label = photo_labels.get(scenario.get("photo_style", "selfie"), "📱 自撮り")
 
         save_reason = scenario.get("save_reason", "")
         share_element = scenario.get("share_element", "")
@@ -442,6 +466,7 @@ PHOTO STYLE:
             {"name": "🎭 舞台", "value": scenario.get("setting", "N/A"), "inline": True},
             {"name": "🌈 ムード", "value": scenario.get("mood", "N/A"), "inline": True},
             {"name": "💄 メイク", "value": makeup, "inline": True},
+            {"name": "📸 撮影スタイル", "value": photo_style_label, "inline": True},
             {"name": "💬 キャプション案", "value": scenario.get("caption", "N/A")[:250], "inline": False},
         ]
         if save_reason:
