@@ -56,25 +56,54 @@ class RunyanContentGenerator:
         self.output_dir.mkdir(exist_ok=True)
         
     def generate_scenario(self) -> dict:
-        """Claude APIを使ってシナリオを自動生成"""
+        """Claude APIを使ってシナリオを自動生成（2025-2026 Instagramトレンド対応）"""
         print("📝 シナリオ生成中...")
-        
+
+        # 曜日別コンテンツテーマ（多様性を確保）
+        day_of_week = datetime.now().weekday()  # 0=月, 6=日
+        theme_schedule = {
+            0: "グルメ・カフェ（月：新しい場所チャレンジ）",
+            1: "ファッション・コーディネート（火：推しコーデ）",
+            2: "美容・メイク（水：ビューティティップス）",
+            3: "推し活・グッズ（木：推し活ライフ）",
+            4: "ルームツアー・ライフスタイル（金：一人暮らしの工夫）",
+            5: "友達との時間・本音（土：友情エピソード＆本音）",
+            6: "素の日常・だらだら（日：ぼっち時間あるある）",
+        }
+        daily_theme = theme_schedule.get(day_of_week, "大学生の日常")
+
         prompt = f"""
-あなたは{CHARACTER['name']}というキャラクターのシナリオライターです。
+あなたは{CHARACTER['name']}という21歳の大学3年生キャラクターのシナリオライターです。
+Instagramでのリール投稿用のコンテンツを作成しています。
 
 【キャラクター設定】
 - 名前: {CHARACTER['name']}
 - 年齢: {CHARACTER['age']}歳
 - 誕生日: {CHARACTER['birthday']}
-- 説明: {CHARACTER['description']}
+- 背景: 上京してぼっち気味だが、Instagramでは背伸びした大人っぽい自分を演出したい
 - コンセプト: 実はぼっちだけど、Instagramでは背伸びした大人っぽい自分を魕せたい
 - 内容: 大学生の日常（授業、アルバイト、友達との時間）+ 本音トーク（たまに）
 
-【タスク】
-1日のInstagram短編リール用のシナリオを作成してください（15秒～30秒程度）
+【本日のテーマ】
+{daily_theme}
+
+【2025-2026年Instagramトレンド対応】
+✅ 「保存される理由」を必ず1つ以上含める：
+   - コーディネート参考になる
+   - カフェ・スポット情報
+   - メイク・美容のコツ
+   - 共感できるあるあるネタ
+
+✅ 「シェアされる驚き・共感」を含める：
+   - 予期しない展開やオチ
+   - 心が動く本音の一言
+   - 友達と「あ、わかる！」となる瞬間
+
+✅ インタラクティブ要素：
+   - 「このどちらが好き？」という選択肢
+   - 「当てはまる？」という質問投げかけ
 
 【メイクスタイルの選択ルール】
-シナリオの場面に合わせて以下から1つ選んでください：
 - "gachi": ガチメイク（デート・夜遊び・おしゃれなカフェ・イベント等）
 - "natural": ナチュラルメイク（授業・買い物・友達とランチ・アルバイト等）
 - "suppin": すっぴん（家・起き抜け・勉強・だらだら系の場面等）
@@ -83,17 +112,20 @@ class RunyanContentGenerator:
 {{
     "title": "シナリオのタイトル",
     "scenario": "具体的なシナリオ（日本語）",
-    "caption": "Instagramのキャプション案",
-    "mood": "雰囲気（happy/thoughtful/excited等）",
-    "setting": "舞台設定（カフェ/大学/アルバイト先等）",
+    "caption": "Instagramのキャプション案。最初に重要キーワード・ハッシュタグを配置。",
+    "mood": "雰囲気（happy/thoughtful/excited/funny/relatable等）",
+    "setting": "舞台設定",
     "makeup_style": "gachi / natural / suppin のいずれか",
-    "key_dialogue": "キーセリフ（あれば）",
+    "key_dialogue": "キーセリフ（視聴者が「あ、わかる」となるセリフ）",
+    "save_reason": "このコンテンツが保存されるポイント",
+    "share_element": "シェアされやすい要素（驚き・共感・笑い）",
+    "interactive_element": "視聴者を参加させる要素（質問・選択肢等）",
     "hashtags": ["#るーにゃ", "#大学生", ...]
 }}
 
 今から生成してください。JSONのみを返してください。
 """
-        
+
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -102,9 +134,9 @@ class RunyanContentGenerator:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.8,
-                max_tokens=1000
+                max_tokens=1200
             )
-            
+
             # マークダウンコードブロックを除去してJSONパース
             content = response.choices[0].message.content.strip()
             if content.startswith("```"):
@@ -114,7 +146,7 @@ class RunyanContentGenerator:
                 content = content.strip()
             scenario_json = json.loads(content)
             return scenario_json
-        
+
         except json.JSONDecodeError as e:
             print(f"❌ JSON解析エラー: {e}")
             return None
@@ -402,16 +434,28 @@ PHOTO STYLE:
         makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
         makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
 
+        save_reason = scenario.get("save_reason", "")
+        share_element = scenario.get("share_element", "")
+        interactive = scenario.get("interactive_element", "")
+
+        fields = [
+            {"name": "🎭 舞台", "value": scenario.get("setting", "N/A"), "inline": True},
+            {"name": "🌈 ムード", "value": scenario.get("mood", "N/A"), "inline": True},
+            {"name": "💄 メイク", "value": makeup, "inline": True},
+            {"name": "💬 キャプション案", "value": scenario.get("caption", "N/A")[:250], "inline": False},
+        ]
+        if save_reason:
+            fields.append({"name": "💾 保存されるポイント", "value": save_reason, "inline": False})
+        if share_element:
+            fields.append({"name": "🔄 シェア要素", "value": share_element, "inline": False})
+        if interactive:
+            fields.append({"name": "🎪 インタラクティブ要素", "value": interactive, "inline": False})
+
         embed = {
             "title": f"📋 今日のシナリオ確認: {scenario.get('title')}",
             "description": scenario.get("scenario", ""),
             "color": 0xFFAA00,
-            "fields": [
-                {"name": "🎭 舞台", "value": scenario.get("setting", "N/A"), "inline": True},
-                {"name": "🌈 ムード", "value": scenario.get("mood", "N/A"), "inline": True},
-                {"name": "💄 メイク", "value": makeup, "inline": True},
-                {"name": "💬 キャプション案", "value": scenario.get("caption", "N/A")[:250], "inline": False},
-            ],
+            "fields": fields,
             "footer": {"text": "「OK」で承認 / 修正内容をコメントで投稿してください（10分以内に自動反映）"},
         }
 
