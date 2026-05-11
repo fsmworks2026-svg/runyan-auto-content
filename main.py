@@ -144,6 +144,7 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         "3枚目：表情クローズアップや小物（英語で簡潔に）",
         "4枚目：オチや締めのカット（英語で簡潔に）"
     ],
+    "best_posting_time": "シナリオの時間帯に合わせた最適なInstagram投稿時間帯（例：18:00〜20:00）と理由を一言で",
     "hashtags": ["#るーにゃ", "#大学生", ...]
 }}
 
@@ -527,6 +528,9 @@ Mood: {scenario.get('mood', 'casual')}
             {"name": "📸 撮影スタイル", "value": photo_style_label, "inline": True},
             {"name": "💬 キャプション案", "value": scenario.get("caption", "N/A")[:250], "inline": False},
         ]
+        best_posting_time = scenario.get("best_posting_time", "")
+        if best_posting_time:
+            fields.append({"name": "🕐 最適な投稿時間", "value": best_posting_time, "inline": False})
         if save_reason:
             fields.append({"name": "💾 保存されるポイント", "value": save_reason, "inline": False})
         if share_element:
