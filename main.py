@@ -65,18 +65,44 @@ class RunyanContentGenerator:
             daily_theme = theme_override
             print(f"  テーマ上書き: {daily_theme}")
         else:
-            from zoneinfo import ZoneInfo
-            day_of_week = datetime.now(ZoneInfo("Asia/Tokyo")).weekday()  # 0=月, 6=日（JST基準）
-            theme_schedule = {
-                0: "グルメ・カフェ（月：新しい場所チャレンジ）",
-                1: "ファッション・コーディネート（火：推しコーデ）",
-                2: "美容・メイク（水：ビューティティップス）",
-                3: "推し活・グッズ（木：推し活ライフ）",
-                4: "ルームツアー・ライフスタイル（金：一人暮らしの工夫）",
-                5: "友達との時間・本音（土：友情エピソード＆本音）",
-                6: "素の日常・だらだら（日：ぼっち時間あるある）",
-            }
-            daily_theme = theme_schedule.get(day_of_week, "大学生の日常")
+            import random
+            theme_pool = [
+                "新しいカフェを開拓・カフェ巡り",
+                "今日のコーデ・ファッション紹介",
+                "朝のスキンケア・美容ルーティン",
+                "推し活（グッズ・ライブ・ファン活動）",
+                "大学・授業・キャンパスライフ",
+                "バイト帰り・お仕事疲れ",
+                "一人暮らしの部屋・インテリア",
+                "友達とのランチ・お茶・遊び",
+                "休日のだらだら・家でゆっくり",
+                "夜のルーティン・帰宅後の時間",
+                "季節のイベント・お出かけ",
+                "ショッピング・お買い物",
+                "自炊・一人暮らしご飯",
+                "読書・勉強・カフェ作業",
+                "通学中・イヤホンで音楽",
+                "本音トーク・ぼっちあるある",
+                "夜遊び・友達と夜のお出かけ",
+                "メイク・コスメ・ビューティ紹介",
+                "カフェスイーツ・デザート巡り",
+                "朝活・モーニング・早起き",
+            ]
+
+            # 直近5件を除外してランダム選択
+            history_path = Path("theme_history.json")
+            history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else {"recent": []}
+            recent = history.get("recent", [])
+            available = [t for t in theme_pool if t not in recent[-5:]]
+            if not available:
+                available = theme_pool  # 全テーマ使い切ったらリセット
+            daily_theme = random.choice(available)
+
+            # 履歴を更新（直近10件を保持）
+            recent.append(daily_theme)
+            history["recent"] = recent[-10:]
+            history_path.write_text(json.dumps(history, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  ランダムテーマ選択: {daily_theme}")
 
         prompt = f"""
 あなたは{CHARACTER['name']}という21歳の大学3年生キャラクターのシナリオライターです。
