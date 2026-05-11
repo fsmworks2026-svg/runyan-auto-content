@@ -1,0 +1,108 @@
+name: Runyan - ストーリーズ個別再生成
+
+# 特定スロットの画像だけ作り直す。
+# 「朝の画像がおかしい」→ slot=morning、指示があれば override_hint に記入。
+
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '再生成するスロット'
+        required: true
+        type: choice
+        options:
+          - morning
+          - afternoon
+          - evening
+          - night
+      override_hint:
+        description: 'シーン変更指示（例: campus cafeteria, looking at phone）空欄でデフォルト'
+        required: false
+        default: ''
+      target_date:
+        description: '対象日付（YYYY-MM-DD、空欄で今日）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  redo-story:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 指定スロットを再生成してDiscordに送信
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          TARGET_DATE: ${{ github.event.inputs.target_date }}
+          SLOT_ID: ${{ github.event.inputs.slot }}
+          OVERRIDE_HINT: ${{ github.event.inputs.override_hint }}
+        run: |
+          python - <<'PYEOF'
+          import os
+          from datetime import date
+          from pathlib import Path
+
+          import generate_stories as gs
+          import daily_context as dc
+
+          # 対象日付の決定
+          target_date_str = os.environ.get("TARGET_DATE", "").strip()
+          target_date = date.fromisoformat(target_date_str) if target_date_str else date.today()
+          today_str   = target_date.strftime("%Y%m%d")
+          slot_id     = os.environ.get("SLOT_ID", "morning").strip()
+          override    = os.environ.get("OVERRIDE_HINT", "").strip()
+
+          print(f"🔄 再生成: {slot_id} / {today_str}" + (f" / hint: {override}" if override else ""))
+
+          # 既存ファイルを削除（強制再生成のため）
+          for suffix in (".jpg", ".png"):
+              p = gs.OUTPUT_DIR / f"story_{today_str}_{slot_id}{suffix}"
+              if p.exists():
+                  p.unlink()
+                  print(f"  🗑️  削除: {p.name}")
+
+          # コンテキストを読み込む
+          ctx = dc.load_or_create(target_date, openai_client=gs.client)
+          slot = next((s for s in ctx["story_slots"] if s["id"] == slot_id), None)
+          if not slot:
+              print(f"❌ スロット '{slot_id}' が見つかりません")
+              exit(1)
+
+          # override_hint がある場合は scene_hint を上書き
+          if override:
+              slot = dict(slot)
+              slot["scene_hint"] = override
+
+          image_path = gs.generate_story_image(slot, ctx, today_str, target_date=target_date)
+          if image_path:
+              caption = gs.pick_caption(slot, ctx)
+              gs.send_discord(slot, caption, image_path)
+              print(f"✅ 完了: {image_path.name}")
+          else:
+              print("❌ 画像生成失敗")
+              exit(1)
+          PYEOF
+
+      - name: 生成ファイルをリポジトリに保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stories_output/ || true
+          git diff --staged --quiet || (git commit -m "chore: ストーリーズ再生成（${{ github.event.inputs.slot }}）" && git pull --rebase && git push)
