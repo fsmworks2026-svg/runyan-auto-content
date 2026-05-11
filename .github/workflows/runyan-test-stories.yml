@@ -1,0 +1,83 @@
+name: Runyan - ストーリーズ テスト投稿
+
+# 通常フロー（21時ブリーフィング→翌日投稿）を待たずに
+# 任意のスロットを今日の日付で即テスト投稿するためのワークフロー。
+
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'テストするスロット'
+        required: true
+        default: 'morning'
+        type: choice
+        options:
+          - morning
+          - noon
+          - evening
+          - night
+
+permissions:
+  contents: write
+
+jobs:
+  test-story:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 今日のストーリー画像を生成
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python - <<'EOF'
+          from datetime import date
+          import generate_stories as gs
+          gs.generate_all(target_date=date.today(), notify_discord=True)
+          EOF
+
+      - name: 今日を承認済みに追加
+        run: |
+          python - <<'EOF'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone, timedelta
+          JST       = timezone(timedelta(hours=9))
+          today_str = datetime.now(JST).strftime("%Y%m%d")
+          path      = Path("approved_dates.json")
+          approved  = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+          if today_str not in approved:
+              approved.append(today_str)
+              path.write_text(json.dumps(approved, ensure_ascii=False, indent=2), encoding="utf-8")
+              print(f"承認済みに追加: {today_str}")
+          else:
+              print(f"既に承認済み: {today_str}")
+          EOF
+
+      - name: ストーリーを投稿（FORCE_SLOT）
+        env:
+          INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
+          INSTAGRAM_PAGE_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_PAGE_ACCESS_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FORCE_SLOT: ${{ github.event.inputs.slot }}
+        run: python stories_poster.py
+
+      - name: ログ・承認日付を保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stories_posted_log.json approved_dates.json daily_contexts/ stories_output/ || true
+          git diff --staged --quiet || (git commit -m "chore: テスト投稿ログを保存（${{ github.event.inputs.slot }}）" && git pull --rebase && git push)

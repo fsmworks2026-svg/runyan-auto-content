@@ -91,23 +91,29 @@ def post_story_image(image_path: Path, ig_user_id: str, page_token: str) -> str:
 
 
 def check_and_post_story():
-    """現在の JST 時刻に対応するストーリーズスロットを投稿する"""
+    """現在の JST 時刻に対応するストーリーズスロットを投稿する。
+    FORCE_SLOT 環境変数が指定されている場合は時間チェックをスキップして強制投稿する（テスト用）。
+    """
     ig_user_id  = os.environ["INSTAGRAM_BUSINESS_ACCOUNT_ID"]
     page_token  = os.environ["INSTAGRAM_PAGE_ACCESS_TOKEN"]
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "")
+    force_slot  = os.environ.get("FORCE_SLOT", "").strip()
 
     now_jst   = datetime.now(JST)
     now_hour  = now_jst.hour
     today_str = now_jst.strftime("%Y%m%d")
 
     print(f"JST {now_jst.strftime('%Y-%m-%d %H:%M')}（{today_str}）")
+    if force_slot:
+        print(f"⚡ FORCE_SLOT モード: {force_slot}")
 
-    # 本日が承認済みか確認（approved_dates.json で管理）
-    approved_path = Path("./approved_dates.json")
-    approved_dates = json.loads(approved_path.read_text(encoding="utf-8")) if approved_path.exists() else []
-    if today_str not in approved_dates:
-        print(f"本日({today_str})は未承認。スキップ。")
-        sys.exit(0)
+    # 本日が承認済みか確認（FORCE_SLOT 時はスキップ）
+    if not force_slot:
+        approved_path  = Path("./approved_dates.json")
+        approved_dates = json.loads(approved_path.read_text(encoding="utf-8")) if approved_path.exists() else []
+        if today_str not in approved_dates:
+            print(f"本日({today_str})は未承認。スキップ。")
+            sys.exit(0)
 
     # 今日の daily_context を読み込む
     ctx_path = Path(f"./daily_contexts/context_{today_str}.json")
@@ -121,16 +127,22 @@ def check_and_post_story():
     log = json.loads(log_path.read_text(encoding="utf-8")) if log_path.exists() else {}
     posted_today = log.get(today_str, [])
 
-    # 現在時刻に対応するスロットを探す（post_window 内で未投稿のもの）
+    # スロット選択（FORCE_SLOT 時は時間チェックをスキップ）
     slot_to_post = None
-    for slot in ctx.get("story_slots", []):
-        if slot["id"] in posted_today:
-            continue
-        start, end = slot["post_window"]
-        end_clamp  = 24 if end >= 24 else end
-        if start <= now_hour < end_clamp:
-            slot_to_post = slot
-            break
+    if force_slot:
+        slot_to_post = next((s for s in ctx.get("story_slots", []) if s["id"] == force_slot), None)
+        if not slot_to_post:
+            print(f"❌ FORCE_SLOT '{force_slot}' が見つかりません。morning/noon/evening/night のいずれかを指定してください。")
+            sys.exit(1)
+    else:
+        for slot in ctx.get("story_slots", []):
+            if slot["id"] in posted_today:
+                continue
+            start, end = slot["post_window"]
+            end_clamp  = 24 if end >= 24 else end
+            if start <= now_hour < end_clamp:
+                slot_to_post = slot
+                break
 
     if not slot_to_post:
         print(f"現在時刻 {now_hour}時 に該当するスロットなし（または投稿済み）")
