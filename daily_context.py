@@ -198,11 +198,11 @@ WEEKLY_SCHEDULE = {
         "evening":   {"label": "バイト",    "scene": "leaving the cafe after work shift, tired but cute on the way home", "outfit_type": "casual"},
         "post_window": (13, 16),
     },
-    1: {  # 火曜（自由）
+    1: {  # 火曜（午前ゼミ）
         "day_jp":    "火曜日",
-        "afternoon": None,
+        "afternoon": {"label": "午前ゼミ", "scene": "university seminar room, morning session with focused discussion and presentation", "outfit_type": "casual"},
         "evening":   None,
-        "post_window": (14, 18),
+        "post_window": (13, 17),
     },
     2: {  # 水曜
         "day_jp":    "水曜日",
