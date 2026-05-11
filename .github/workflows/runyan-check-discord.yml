@@ -1,9 +1,8 @@
 name: Runyan - Discord チェック（自動承認）
 
 on:
-  # スケジュール一時停止中（動画生成完成後に再開）
-  # schedule:
-  #   - cron: '*/10 * * * *'
+  schedule:
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:
