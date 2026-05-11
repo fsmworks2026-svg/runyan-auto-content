@@ -252,7 +252,7 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         photo_style = scenario.get("photo_style", "")
         if photo_style == "mirror_living":
             suffix = "night" if is_night else "morning"
-            return room_dir / f"living_sofa_{suffix}.png"
+            return room_dir / f"living_mirror_{suffix}.png"
         if photo_style == "mirror_washroom":
             return room_dir / "washroom_mirror.png"
 
