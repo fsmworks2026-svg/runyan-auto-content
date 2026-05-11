@@ -138,9 +138,7 @@ Instagramでのリール投稿用のコンテンツを作成しています。
     "save_reason": "このコンテンツが保存されるポイント",
     "share_element": "シェアされやすい要素（驚き・共感・笑い）",
     "interactive_element": "視聴者を参加させる要素（質問・選択肢等）",
-    "shots": [
-        "メインシーン：リールのカバー画像になる最も映えるカット（英語で簡潔に）"
-    ],
+    "main_shot": "リールのカバー画像になる最も映えるメインシーンを日本語で具体的に描写（例：カフェの窓際でコーヒーを両手で持ちながら外を眺めている）",
     "best_posting_time": "シナリオの時間帯に合わせた最適なInstagram投稿時間帯（例：18:00〜20:00）と理由を一言で",
     "hashtags": ["#るーにゃ", "#大学生", ...]
 }}
@@ -578,7 +576,7 @@ Mood: {scenario.get('mood', 'casual')}
 Title: {scenario.get('title')}
 Setting: {scenario.get('setting')}
 Mood: {scenario.get('mood')}
-Main scene: {scenario.get('shots', [''])[0]}
+Main scene: {scenario.get('main_shot', scenario.get('shots', [''])[0] if scenario.get('shots') else '')}
 Camera style: {camera_note}
 
 Requirements:
@@ -621,9 +619,8 @@ Output only the prompt, no explanation.""",
 
         print(f"✅ シナリオ読み込み: {scenario.get('title')}")
 
-        # メインショット（1枚目）を生成
-        shots = scenario.get("shots", [""])
-        main_shot = shots[0] if shots else ""
+        # メインショットを生成
+        main_shot = scenario.get("main_shot", scenario.get("shots", [""])[0] if scenario.get("shots") else "")
         image_path = self.generate_image(scenario, shot_description=main_shot, shot_index=0)
         if not image_path:
             print("❌ 画像生成が失敗しました")
