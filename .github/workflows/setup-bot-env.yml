@@ -17,9 +17,12 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           GITHUB_PAT: ${{ secrets.GH_PAT }}
         run: |
-          printf 'DISCORD_BOT_TOKEN=%s\n'            "$DISCORD_BOT_TOKEN"            > .env
-          printf 'GITHUB_PAT=%s\n'                   "$GITHUB_PAT"                  >> .env
-          printf 'DISCORD_SCENARIO_CHANNEL_ID=%s\n'  "1502679588894019595"           >> .env
+          printf 'DISCORD_BOT_TOKEN=%s
+'            "$DISCORD_BOT_TOKEN"            > .env
+          printf 'GITHUB_PAT=%s
+'                   "$GITHUB_PAT"                  >> .env
+          printf 'DISCORD_SCENARIO_CHANNEL_ID=%s
+'  "1502679588894019595"           >> .env
           echo ".env を生成しました（内容はマスクされます）"
 
       - name: Artifacts にアップロード（24時間で自動削除）
@@ -28,3 +31,4 @@ jobs:
           name: bot-env
           path: .env
           retention-days: 1
+          include-hidden-files: true
