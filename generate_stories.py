@@ -114,38 +114,40 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         "gachi":   "Glamorous full makeup. Bold eye makeup. Defined lips. Contoured skin.",
     }[makeup]
 
-    # 顔隠し構図（すっぴんスロット）
-    conceal_text = ""
-    if _needs_face_conceal(slot):
-        conceal_text = f"\nFace concealment: {ctx['face_conceal']}\n"
-
     # 撮影スタイル＋部屋アングル（outfit_typeで分岐）
     outfit_type = slot.get("outfit_type", "casual")
     start_hour  = slot.get("post_window", [12, 14])[0]
     is_night    = start_hour >= 17 or start_hour <= 4
 
     if outfit_type == "casual":
-        room_text  = ""
-        room_style = "mirror"  # casual では未使用
+        room_text   = ""
+        room_style  = "mirror"  # casual では未使用
         camera_text = "\nSelfie stick shot. Front camera, wider angle. Natural casual angle, not tripod-level perfect framing.\n"
+        conceal_text = ""  # 外出＋メイクあり → 顔隠し不要
 
     elif outfit_type == "room":
         room_style = random.choice(["mirror", "sofa"])
         if room_style == "mirror":
-            room_text   = "\nRoom setting: Living room. Full-length mirror with light wood frame leaning against white wall. Light oak floor. Small plant beside mirror. Kitchen visible in mirror reflection.\n"
-            camera_text = "\nMirror selfie. Character standing in front of the full-length mirror, phone held up. Living room reflected behind her in the mirror.\n"
+            room_text    = "\nRoom setting: Living room. Full-length mirror with light wood frame leaning against white wall. Light oak floor. Small plant beside mirror. Kitchen visible in mirror reflection.\n"
+            camera_text  = "\nMirror selfie. Character standing in front of the full-length mirror, phone held up. Living room reflected behind her in the mirror.\n"
+            # 鏡セルフィー: スマホの背面が顔を自然に隠す
+            conceal_text = "\nFace concealment: The back of the smartphone held up to take the mirror selfie naturally covers the upper half of the face. Eyes and above mostly hidden behind the phone. Lower face and neck visible.\n"
         else:
-            room_text   = f"\nRoom setting: {_build_room_description(ctx)} Beige fabric sofa. Low wooden table in front.\n"
-            camera_text = "\nSelfie on the sofa. Front camera. Arm extended. Slightly downward angle. Relaxed sitting pose.\n"
+            room_text    = f"\nRoom setting: {_build_room_description(ctx)} Beige fabric sofa. Low wooden table in front.\n"
+            camera_text  = "\nSelfie on the sofa. Front camera. Arm extended. Slightly downward angle. Relaxed sitting pose.\n"
+            # ソファ自撮り（インカメラ）: ステッカーで目元を隠す
+            conceal_text = "\nFace concealment: A cute pastel sticker (star or heart shape) is placed over the upper half of the face in the photo, covering the eyes. Like an Instagram story decoration overlay. Natural selfie but face partially hidden.\n"
 
     else:
-        # パジャマ（朝・夜の寝室）
+        # パジャマ（朝・夜の寝室）インカメラ: ステッカーで顔半分を隠す
         if is_night:
             room_text = "\nRoom setting: Bedroom at night. Warm lamp light on the shelf. Light oak desk on left, white linen bed on right. Soft shadows.\n"
         else:
             room_text = "\nRoom setting: Bedroom in the morning. Soft natural light through lace curtains. Light oak desk on left, white linen bed on right.\n"
-        room_style  = "mirror"  # pajamas では未使用
-        camera_text = "\nSelfie. Front camera. Arm extended. Slight downward angle.\n"
+        room_style   = "mirror"  # pajamas では未使用
+        camera_text  = "\nSelfie. Front camera. Arm extended. Slight downward angle.\n"
+        # すっぴんインカメラ: ステッカーで目元を隠す
+        conceal_text = "\nFace concealment: A cute pastel sticker (star or heart shape) is placed over the upper half of the face in the photo, covering the eyes. Like an Instagram story decoration overlay. Natural selfie but face partially hidden.\n"
 
     prompt = f"""{CHARA_BASE}
 
