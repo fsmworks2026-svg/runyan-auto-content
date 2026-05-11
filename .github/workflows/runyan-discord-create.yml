@@ -1,8 +1,9 @@
-name: Runyan - Discord 新規リール作成コマンド
+name: Runyan - Discord 新規リール作成コマンド（手動実行用）
+
+# スケジュール実行は runyan-discord-backup.yml に統合した。
+# このワークフローは手動実行（workflow_dispatch）専用として残す。
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -81,7 +82,7 @@ jobs:
                       "Authorization": f"token {GITHUB_PAT}",
                       "Accept": "application/vnd.github.v3+json",
                   },
-                  json={"ref": "master", "inputs": {"theme_override": theme}},
+                  json={"ref": "master", "inputs": {"theme_override": theme, "is_spot_reel": "true"}},
               )
 
               if gh_res.status_code == 204:

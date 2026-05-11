@@ -1,0 +1,212 @@
+name: Runyan - Discord バックアップポーリング（1時間ごと）
+
+# ローカルDiscordBot（discord_bot.py）が落ちているときのバックアップ。
+# PC が起動していれば discord_bot.py がリアルタイムで処理するため、
+# このワークフローは最大1時間後に検知するフォールバックとして動作する。
+# JST 06:00〜23:00 の時間帯のみ実行してGitHub Actionsの無料枠を節約する。
+
+on:
+  schedule:
+    - cron: '0 0-14 * * *'   # UTC 00-14 = JST 09:00-23:00
+    - cron: '0 21-23 * * *'  # UTC 21-23 = JST 06:00-08:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup-poll:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Discord 状態を確認してワークフローを起動（バックアップ）
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_SCENARIO_CHANNEL_ID: "1502679588894019595"
+          GITHUB_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPO: "fsmworks2026-svg/runyan-auto-content"
+        run: |
+          python - <<'EOF'
+          import requests
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          BOT_TOKEN  = os.getenv("DISCORD_BOT_TOKEN")
+          CHANNEL_ID = os.getenv("DISCORD_SCENARIO_CHANNEL_ID")
+          GH_PAT     = os.getenv("GITHUB_PAT")
+          GH_REPO    = os.getenv("GITHUB_REPO")
+          HEADERS    = {"Authorization": f"Bot {BOT_TOKEN}"}
+
+
+          def trigger_workflow(workflow_file: str, inputs: dict = None) -> bool:
+              """GitHub Actions ワークフローを workflow_dispatch で起動する"""
+              res = requests.post(
+                  f"https://api.github.com/repos/{GH_REPO}/actions/workflows/{workflow_file}/dispatches",
+                  headers={
+                      "Authorization": f"token {GH_PAT}",
+                      "Accept": "application/vnd.github.v3+json",
+                  },
+                  json={"ref": "master", "inputs": inputs or {}},
+              )
+              return res.status_code == 204
+
+
+          # ══════════════════════════════════════════════════════════════════
+          # Part 1: ブリーフィング承認チェック（✅ / ❌ / 修正:）
+          # discord_bot.py が処理済みなら discord_status は pending でないのでスキップされる
+          # ══════════════════════════════════════════════════════════════════
+          scenario_path = Path("current_scenario.json")
+          if scenario_path.exists():
+              scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+
+              if scenario.get("discord_status") == "pending":
+                  message_id = scenario.get("discord_message_id")
+
+                  if message_id:
+                      # ① ✅ リアクションの確認
+                      reaction_res = requests.get(
+                          f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages/{message_id}/reactions/%E2%9C%85",
+                          headers=HEADERS,
+                      )
+                      if reaction_res.status_code == 200:
+                          reactors = [u for u in reaction_res.json() if not u.get("bot")]
+                          if reactors:
+                              print(f"✅ リアクション検知（{reactors[0].get('username')}）→ コンテンツ生成を起動")
+                              ok = trigger_workflow("runyan-generate.yml")
+                              if ok:
+                                  print("✅ runyan-generate.yml を起動しました")
+                                  scenario["discord_status"] = "approved"
+                                  scenario_path.write_text(
+                                      json.dumps(scenario, ensure_ascii=False, indent=2), encoding="utf-8"
+                                  )
+                                  # 承認日付を記録（stories/feed_poster が参照する）
+                                  approved_path = Path("approved_dates.json")
+                                  approved = json.loads(approved_path.read_text(encoding="utf-8")) if approved_path.exists() else []
+                                  briefing_date = scenario.get("briefing_date", "")
+                                  if briefing_date and briefing_date not in approved:
+                                      approved.append(briefing_date)
+                                      approved_path.write_text(
+                                          json.dumps(approved, ensure_ascii=False, indent=2), encoding="utf-8"
+                                      )
+                                      print(f"  承認日付を記録: {briefing_date}")
+                              else:
+                                  print("❌ ワークフロー起動失敗")
+                                  sys.exit(1)
+                          else:
+                              print("✅ リアクションなし")
+                      else:
+                          print(f"Discord API エラー（✅）: {reaction_res.status_code}")
+
+                      # ② ❌ リアクションの確認
+                      ng_res = requests.get(
+                          f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages/{message_id}/reactions/%E2%9D%8C",
+                          headers=HEADERS,
+                      )
+                      if ng_res.status_code == 200:
+                          ng_users = [u for u in ng_res.json() if not u.get("bot")]
+                          if ng_users:
+                              print("❌ リアクション検知 → 今日のコンテンツをスキップ")
+                              scenario["discord_status"] = "skipped"
+                              scenario_path.write_text(
+                                  json.dumps(scenario, ensure_ascii=False, indent=2), encoding="utf-8"
+                              )
+
+                      # ③ 修正コメント（ブリーフィングへの返信）の確認
+                      msgs_res = requests.get(
+                          f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages"
+                          f"?after={message_id}&limit=20",
+                          headers=HEADERS,
+                      )
+                      if msgs_res.status_code == 200:
+                          for msg in reversed(msgs_res.json()):
+                              if msg.get("author", {}).get("bot"):
+                                  continue
+                              content_text = msg.get("content", "").strip()
+                              if not content_text:
+                                  continue
+                              ref = msg.get("message_reference", {})
+                              if ref.get("message_id") == message_id or content_text.startswith("修正:"):
+                                  print(f"修正コメント検出: {content_text} → シナリオ再生成")
+                                  ok = trigger_workflow("runyan-scenario.yml", {"theme_override": content_text})
+                                  if ok:
+                                      print("✅ runyan-scenario.yml を起動しました")
+                                      scenario["discord_status"] = "regenerating"
+                                      scenario_path.write_text(
+                                          json.dumps(scenario, ensure_ascii=False, indent=2), encoding="utf-8"
+                                      )
+                                  else:
+                                      print("❌ ワークフロー起動失敗")
+                                      sys.exit(1)
+                                  break
+              else:
+                  print(f"ブリーフィングステータス: {scenario.get('discord_status')}。スキップ。")
+          else:
+              print("current_scenario.json なし。スキップ。")
+
+
+          # ══════════════════════════════════════════════════════════════════
+          # Part 2: 「新規:」コマンドチェック
+          # discord_bot.py が処理済みなら last_command_id が更新されているのでスキップされる
+          # ══════════════════════════════════════════════════════════════════
+          state_path = Path("last_command_id.json")
+          state  = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {"last_id": "0"}
+          last_id = state.get("last_id", "0")
+
+          res = requests.get(
+              f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages?limit=20",
+              headers=HEADERS,
+          )
+          if res.status_code != 200:
+              print(f"Discord API エラー（メッセージ取得）: {res.status_code} {res.text}")
+              sys.exit(1)
+
+          messages = res.json()
+          for msg in reversed(messages):
+              if msg.get("author", {}).get("bot"):
+                  continue
+              if int(msg["id"]) <= int(last_id):
+                  continue
+
+              content = msg.get("content", "").strip()
+              if not content.startswith("新規:"):
+                  continue
+
+              theme = content[3:].strip()
+              print(f"新規リール作成コマンドを検出: {theme}")
+
+              gh_res = trigger_workflow(
+                  "runyan-scenario.yml",
+                  {"theme_override": theme, "is_spot_reel": "true"},
+              )
+              if gh_res:
+                  print(f"✅ Step1 を起動しました（テーマ: {theme}）")
+                  state["last_id"] = msg["id"]
+                  state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+              else:
+                  print(f"❌ Step1 起動失敗")
+                  sys.exit(1)
+
+              break  # 1回に1コマンドだけ処理
+
+          EOF
+
+      - name: 変更ファイルを保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add current_scenario.json last_command_id.json || true
+          [ -f approved_dates.json ] && git add approved_dates.json || true
+          git diff --staged --quiet || (git commit -m "chore: Discordバックアップポーリング結果を更新" && git pull --rebase && git push)
