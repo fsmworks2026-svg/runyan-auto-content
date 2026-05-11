@@ -194,13 +194,13 @@ def _get_free_activity(d: date) -> dict:
 WEEKLY_SCHEDULE = {
     0: {  # 月曜
         "day_jp":    "月曜日",
-        "afternoon": {"label": "講義2コマ", "scene": "university classroom or campus corridor after two lectures", "outfit_type": "casual"},
+        "afternoon": {"label": "講義2コマ", "scene": "university classroom or campus corridor after two lectures", "story_scene": "campus cafeteria during lunch break between lectures, phone on table", "outfit_type": "casual"},
         "evening":   {"label": "バイト",    "scene": "leaving the cafe after work shift, tired but cute on the way home", "outfit_type": "casual"},
         "post_window": (13, 16),
     },
     1: {  # 火曜（午前ゼミ）
         "day_jp":    "火曜日",
-        "afternoon": {"label": "午前ゼミ", "scene": "university seminar room, morning session with focused discussion and presentation", "outfit_type": "casual"},
+        "afternoon": {"label": "午前ゼミ", "scene": "university seminar room, morning session with focused discussion and presentation", "story_scene": "campus corridor right after morning seminar, stretching and looking relieved, holding notebook", "outfit_type": "casual"},
         "evening":   None,
         "post_window": (13, 17),
     },
@@ -212,13 +212,13 @@ WEEKLY_SCHEDULE = {
     },
     3: {  # 木曜（ゼミ）
         "day_jp":    "木曜日",
-        "afternoon": {"label": "ゼミ",    "scene": "university seminar room, relief and tiredness after the presentation", "outfit_type": "casual"},
+        "afternoon": {"label": "ゼミ",    "scene": "university seminar room, relief and tiredness after the presentation", "story_scene": "campus hallway after seminar presentation, relieved expression, notebook under arm", "outfit_type": "casual"},
         "evening":   None,
         "post_window": (17, 20),
     },
     4: {  # 金曜
         "day_jp":    "金曜日",
-        "afternoon": {"label": "講義2コマ", "scene": "university campus end-of-week feeling, slightly tired but relieved", "outfit_type": "casual"},
+        "afternoon": {"label": "講義2コマ", "scene": "university campus end-of-week feeling, slightly tired but relieved", "story_scene": "campus bench or cafeteria, end-of-week relief, bag beside her", "outfit_type": "casual"},
         "evening":   {"label": "バイト",    "scene": "leaving the cafe after work shift, tired but cute on the way home", "outfit_type": "casual"},
         "post_window": (18, 21),
     },
@@ -350,7 +350,8 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
             "outfit_type": sched["afternoon"]["outfit_type"],
             "no_makeup":   False,
             "post_window": [11, 13],
-            "scene_hint":  f"{sched['afternoon']['label']} — {sched['afternoon']['scene']}",
+            # story_scene があればストーリーズ用シーンを優先（授業中自撮りを避ける）
+            "scene_hint":  f"{sched['afternoon']['label']} — {sched['afternoon'].get('story_scene', sched['afternoon']['scene'])}",
         },
         {
             "id":          "evening",

@@ -92,8 +92,8 @@ def _select_room_image(slot: dict, room_style: str = "mirror") -> Path | None:
 
 
 def _needs_face_conceal(slot: dict) -> bool:
-    """顔隠しが必要なスロットかどうか（すっぴん = 朝・深夜、部屋着の夕方）"""
-    return slot["no_makeup"] or slot["outfit_type"] == "room"
+    """顔隠しが必要なスロットかどうか（すっぴんのみ）"""
+    return slot["no_makeup"]
 
 
 def _makeup_for_slot(slot: dict) -> str:
@@ -128,26 +128,52 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     elif outfit_type == "room":
         room_style = random.choice(["mirror", "sofa"])
         if room_style == "mirror":
-            room_text    = "\nRoom setting: Living room. Full-length mirror with light wood frame leaning against white wall. Light oak floor. Small plant beside mirror. Kitchen visible in mirror reflection.\n"
-            camera_text  = "\nMirror selfie. Character standing in front of the full-length mirror, phone held up. Living room reflected behind her in the mirror.\n"
-            # 鏡セルフィー: スマホの背面が顔を自然に隠す
-            conceal_text = "\nFace concealment: The back of the smartphone held up to take the mirror selfie naturally covers the upper half of the face. Eyes and above mostly hidden behind the phone. Lower face and neck visible.\n"
+            room_text    = (
+                "\nRoom setting: Japanese 1LDK apartment living room. "
+                "Full-length mirror with rounded light oak wood frame leaning against the white wall. "
+                "Light oak flooring. Small green plant in white pot beside the mirror. "
+                "Dining table and chair partially visible on the right edge. "
+                "Kitchen with white refrigerator visible in the mirror reflection. "
+                "Postcard prints on the wall to the right of the mirror.\n"
+            )
+            camera_text  = "\nMirror selfie. Character standing directly in front of the full-length mirror, arm raised holding phone toward mirror. Phone back covers upper face in reflection.\n"
+            conceal_text = ""  # 鏡セルフィー: スマホが顔を自然に隠す（追加テキスト不要）
+
         else:
-            room_text    = f"\nRoom setting: {_build_room_description(ctx)} Beige fabric sofa. Low wooden table in front.\n"
-            camera_text  = "\nSelfie on the sofa. Front camera. Arm extended. Slightly downward angle. Relaxed sitting pose.\n"
-            # ソファ自撮り（インカメラ）: ステッカーで目元を隠す
-            conceal_text = "\nFace concealment: A cute pastel sticker (star or heart shape) is placed over the upper half of the face in the photo, covering the eyes. Like an Instagram story decoration overlay. Natural selfie but face partially hidden.\n"
+            room_text    = (
+                "\nRoom setting: Japanese 1LDK apartment living room. "
+                "Beige fabric 2-seater sofa against the wall. Character sitting on the sofa. "
+                "Light oak low table in front with a phone or manga on it. "
+                "Lace curtains on the window. Warm ambient lighting.\n"
+            )
+            camera_text  = "\nFront camera selfie sitting on the sofa. Arm extended toward camera. Slightly downward angle. Relaxed casual pose on couch.\n"
+            conceal_text = ""  # 部屋着＋メイクあり → 顔隠し不要
 
     else:
-        # パジャマ（朝・夜の寝室）インカメラ: ステッカーで顔半分を隠す
+        # パジャマ（朝・夜の寝室）
         if is_night:
-            room_text = "\nRoom setting: Bedroom at night. Warm lamp light on the shelf. Light oak desk on left, white linen bed on right. Soft shadows.\n"
+            room_text = (
+                "\nRoom setting: Japanese apartment bedroom at night. "
+                "Character sitting on the edge of the white linen bed. "
+                "Warm orange lamp on the light oak open shelf — this is the main light source. "
+                "Light oak desk on the left side. White pillow and blanket on the bed behind her. "
+                "Room is dim, only the warm lamp illuminates the space.\n"
+            )
         else:
-            room_text = "\nRoom setting: Bedroom in the morning. Soft natural light through lace curtains. Light oak desk on left, white linen bed on right.\n"
+            room_text = (
+                "\nRoom setting: Japanese apartment bedroom in the morning. "
+                "Character sitting on the edge of the white linen bed. "
+                "Soft natural sunlight through white lace curtains on the window. "
+                "Light oak desk on the left, open shelf with small items on the right. "
+                "White pillow visible behind her.\n"
+            )
         room_style   = "mirror"  # pajamas では未使用
-        camera_text  = "\nSelfie. Front camera. Arm extended. Slight downward angle.\n"
-        # すっぴんインカメラ: ステッカーで目元を隠す
-        conceal_text = "\nFace concealment: A cute pastel sticker (star or heart shape) is placed over the upper half of the face in the photo, covering the eyes. Like an Instagram story decoration overlay. Natural selfie but face partially hidden.\n"
+        camera_text  = "\nFront camera selfie. Character sitting on the edge of the bed, arm extended toward camera. Slight downward angle.\n"
+        conceal_text = (
+            "\nFace concealment: A cute pastel pink star-shaped sticker is placed "
+            "over the eyes area in the photo, covering from the eyebrows to the nose bridge. "
+            "Like an Instagram story decoration. The rest of the face (lips, chin) is visible.\n"
+        )
 
     prompt = f"""{CHARA_BASE}
 
