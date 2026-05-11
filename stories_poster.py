@@ -20,15 +20,17 @@ def post_story_image(image_path: Path, ig_user_id: str, page_token: str) -> str:
     """
     Instagram Graph API で Stories に画像を resumable upload で投稿する。
     """
-    file_size = image_path.stat().st_size
+    file_size    = image_path.stat().st_size
+    content_type = "image/jpeg" if image_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
 
-    # 1. コンテナ作成
+    # 1. コンテナ作成（content_type を明示しないと動画として扱われエラーになる）
     print("  📤 Storiesアップロードセッション開始...")
     res = requests.post(
         f"https://graph.facebook.com/v25.0/{ig_user_id}/media",
         params={
             "media_type":   "STORIES",
             "upload_type":  "resumable",
+            "content_type": content_type,
             "access_token": page_token,
         },
     )

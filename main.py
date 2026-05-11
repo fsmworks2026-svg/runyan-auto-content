@@ -166,8 +166,12 @@ Instagramでのリール投稿用のコンテンツを作成しています。
 - "suppin": すっぴん（家・起き抜け・勉強・だらだら系の場面等）
 
 【撮影スタイルの選択ルール】
-- "selfie": 一人のシーン（自撮り・前カメラ・腕を伸ばした感じ）
+- "selfie": 一人・室内（前カメラ・腕を伸ばしたバストアップ自撮り）
+- "selfie_stick": 一人・屋外 or カフェ（自撮り棒使用・少し引いた画角・全身〜バストアップ）。三脚は持ち歩かない設定。
+- "mirror_living": 一人・自宅リビング（姿見に全身を映してスマホで自撮り。コーデ確認・ファッション系に最適）
+- "mirror_washroom": 一人・洗面所（洗面台の鏡に映してスマホで自撮り。スキンケア・メイク・朝ルーティン系に最適）
 - "friend_shot": 友達・複数人のいるシーン（友達に撮ってもらった自然な感じ）
+※ 一人で屋外・大学・カフェは必ず "selfie_stick"。自宅でコーデや全身を見せたいときは "mirror_living"。スキンケア・洗顔系は "mirror_washroom"。
 
 【ハッシュタグの禁止事項】
 以下のようなAI・キャラクター系のハッシュタグは絶対に使わないこと：
@@ -183,7 +187,7 @@ Instagramでのリール投稿用のコンテンツを作成しています。
     "mood": "雰囲気（happy/thoughtful/excited/funny/relatable等）",
     "setting": "舞台設定",
     "makeup_style": "gachi / natural / suppin のいずれか",
-    "photo_style": "selfie / friend_shot のいずれか",
+    "photo_style": "selfie / selfie_stick / mirror_living / mirror_washroom / friend_shot のいずれか",
     "outfit": "その日の服装を英語で簡潔に記述（例: ivory knit top, beige wide pants, white sneakers）。4枚全ショット共通で使用する。",
     "key_dialogue": "キーセリフ（視聴者が「あ、わかる」となるセリフ）",
     "save_reason": "このコンテンツが保存されるポイント",
@@ -225,8 +229,55 @@ Instagramでのリール投稿用のコンテンツを作成しています。
             print(f"❌ シナリオ生成エラー: {e}")
             return None
 
+    def _select_room_image(self, scenario: dict) -> Path | None:
+        """
+        シーンの場所・時間帯に応じた部屋背景画像を返す。
+        屋外・カフェ・大学など室内部屋画像が不適切なシーンは None を返す。
+        """
+        room_dir = Path("./部屋画像")
+
+        # setting と scenario テキストを結合してキーワード検索
+        search_text = (
+            scenario.get("setting", "") + " " +
+            scenario.get("scenario", "") + " " +
+            scenario.get("title", "")
+        )
+
+        # 投稿時間帯から夜かどうかを判定
+        posting_time = scenario.get("best_posting_time", "")
+        night_hours = ["17:", "18:", "19:", "20:", "21:", "22:", "23:", "0:", "1:"]
+        is_night = any(h in posting_time for h in night_hours)
+
+        # photo_style で明示指定されている場合は優先
+        photo_style = scenario.get("photo_style", "")
+        if photo_style == "mirror_living":
+            suffix = "night" if is_night else "morning"
+            return room_dir / f"living_sofa_{suffix}.png"
+        if photo_style == "mirror_washroom":
+            return room_dir / "washroom_mirror.png"
+
+        # 洗面所（スキンケア・洗顔・メイク系）
+        washroom_keywords = ["洗面", "スキンケア", "洗顔", "クレンジング", "美容ルーティン", "化粧水", "保湿"]
+        if any(kw in search_text for kw in washroom_keywords):
+            return room_dir / "washroom_mirror.png"
+
+        # 寝室（就寝・起床・ベッド・夜ルーティン系）
+        bedroom_keywords = ["寝室", "ベッド", "起き", "就寝", "寝る", "目覚め", "朝活", "夜のルーティン", "帰宅後", "おやすみ", "だらだら", "家でゆっくり", "休日の朝"]
+        if any(kw in search_text for kw in bedroom_keywords):
+            suffix = "night" if is_night else "morning"
+            return room_dir / f"bedroom_entrance_{suffix}.png"
+
+        # リビング（食事・くつろぎ・インテリア・自炊系）
+        living_keywords = ["リビング", "ソファ", "ダイニング", "食事", "自炊", "ご飯", "くつろぎ", "一人暮らしの部屋", "インテリア", "おうち", "お家", "部屋でゆっくり"]
+        if any(kw in search_text for kw in living_keywords):
+            suffix = "night" if is_night else "morning"
+            return room_dir / f"living_sofa_{suffix}.png"
+
+        # 屋外・カフェ・大学・バイト等は部屋画像なし
+        return None
+
     def generate_image(self, scenario: dict, shot_description: str = None, shot_index: int = 0) -> str:
-        """参照画像をベースに gpt-image-1 で画像を生成（顔固定）"""
+        """参照画像をベースに gpt-image-2 で画像を生成（顔固定）"""
         label = f"({shot_index + 1}/4) " if shot_description else ""
         print(f"🎨 画像生成中... {label}")
 
@@ -250,9 +301,15 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         # 撮影スタイル
         photo_style = scenario.get("photo_style", "selfie")
         if photo_style == "friend_shot":
-            camera_text = "Candid shot by a friend.\nNatural perspective.\nSlightly off-center."
+            camera_text = "Candid shot by a friend.\nNatural perspective.\nSlightly off-center.\nNot a selfie."
+        elif photo_style == "selfie_stick":
+            camera_text = "Selfie stick shot.\nFront camera, wider angle than arm selfie.\nSlightly more distance from face.\nFull body or 3/4 shot possible.\nNatural casual angle, not tripod-level perfect framing."
+        elif photo_style == "mirror_living":
+            camera_text = "Mirror selfie in living room.\nFull-length mirror leaning against wall.\nCharacter reflected in mirror holding phone up to take photo.\nFull body or 3/4 visible in reflection.\nArm slightly raised holding phone, natural pose."
+        elif photo_style == "mirror_washroom":
+            camera_text = "Bathroom mirror selfie.\nCharacter reflected in washroom mirror holding phone.\nBust-up to 3/4 shot in reflection.\nSink and counter visible below.\nNatural casual pose."
         else:
-            camera_text = "Selfie.\nFront camera.\nArm extended.\nSlight downward angle."
+            camera_text = "Selfie.\nFront camera.\nArm extended.\nSlight downward angle.\nClose-up face and upper body."
 
         # 服装（4枚共通）と Scene
         outfit = scenario.get("outfit", "simple feminine outfit, beige or ivory tones, soft knitwear")
@@ -292,16 +349,35 @@ Vertical 9:16.
 Scene:
 {scene_text}
 Mood: {scenario.get('mood', 'casual')}
+
+{f"Place this character naturally inside the provided room background image. Match the lighting and perspective of the room." if self._select_room_image(scenario) else ""}
 """
 
         try:
-            with open(reference_path, "rb") as image_file:
-                response = self.openai_client.images.edit(
-                    model="gpt-image-2",
-                    image=image_file,
-                    prompt=prompt,
-                    size="1024x1536",
-                )
+            # シーンに応じた部屋背景画像を選択
+            room_image_path = self._select_room_image(scenario)
+
+            # キャラ参照画像 + 部屋画像（あれば）を渡す
+            char_file = open(reference_path, "rb")
+            if room_image_path and room_image_path.exists():
+                room_file = open(room_image_path, "rb")
+                images_input = [char_file, room_file]
+                print(f"  🏠 部屋背景: {room_image_path.name}")
+            else:
+                images_input = char_file
+                room_file = None
+                print("  🌍 屋外シーン（部屋画像なし）")
+
+            response = self.openai_client.images.edit(
+                model="gpt-image-2",
+                image=images_input,
+                prompt=prompt,
+                size="1024x1536",
+            )
+
+            char_file.close()
+            if room_file:
+                room_file.close()
 
             # base64 デコードして画像ファイルとして保存
             import base64
@@ -511,7 +587,7 @@ Mood: {scenario.get('mood', 'casual')}
             print(f"❌ Discord通知エラー: {e}")
 
     def send_discord_image(self, scenario: dict, image_paths: list, video_prompt: str = None):
-        """生成した画像（複数）を Discord に送信する"""
+        """生成した画像（複数）を Discord に送信し ✅/❌ リアクションを追加する"""
         print(f"💬 Discord に画像を送信中... ({len(image_paths)}枚)")
         try:
             caption = scenario.get("caption", "")
@@ -528,8 +604,9 @@ Mood: {scenario.get('mood', 'casual')}
                 opened.append(f)
                 files[f"files[{i}]"] = (f"image_{i + 1}.png", f, "image/png")
 
+            # ?wait=true でメッセージIDを取得（リアクション追加に必要）
             response = requests.post(
-                DISCORD_WEBHOOK_URL,
+                DISCORD_WEBHOOK_URL + "?wait=true",
                 data={"content": content},
                 files=files,
             )
@@ -537,8 +614,21 @@ Mood: {scenario.get('mood', 'casual')}
             for f in opened:
                 f.close()
 
-            if response.status_code in (200, 204):
+            if response.status_code in (200, 201):
                 print(f"✅ Discord に {len(image_paths)} 枚の画像を送信しました")
+                # ✅/❌ リアクションを追加
+                msg_data   = response.json()
+                message_id = msg_data.get("id")
+                channel_id = msg_data.get("channel_id")
+                bot_token  = os.getenv("DISCORD_BOT_TOKEN", "")
+                if message_id and channel_id and bot_token:
+                    headers = {"Authorization": f"Bot {bot_token}"}
+                    for emoji in ["✅", "❌"]:
+                        requests.put(
+                            f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{requests.utils.quote(emoji)}/@me",
+                            headers=headers,
+                        )
+                    print("  👍 ✅/❌ リアクション追加完了")
             else:
                 print(f"❌ Discord 送信失敗: {response.status_code} {response.text}")
         except Exception as e:
@@ -567,7 +657,13 @@ Mood: {scenario.get('mood', 'casual')}
         # Discord にシナリオを投稿して確認を求める
         makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
         makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
-        photo_labels = {"selfie": "📱 自撮り", "friend_shot": "👫 友達に撮ってもらう"}
+        photo_labels = {
+            "selfie":           "📱 自撮り（室内）",
+            "selfie_stick":     "🤳 自撮り棒（屋外）",
+            "mirror_living":    "🪞 姿見ミラーセルフィー",
+            "mirror_washroom":  "🚿 洗面鏡セルフィー",
+            "friend_shot":      "👫 友達に撮ってもらう",
+        }
         photo_style_label = photo_labels.get(scenario.get("photo_style", "selfie"), "📱 自撮り")
 
         save_reason = scenario.get("save_reason", "")
@@ -614,11 +710,12 @@ Mood: {scenario.get('mood', 'casual')}
     def generate_video_prompt(self, scenario: dict) -> str:
         """ElevenLabs/Kling向けの動画生成プロンプトを生成"""
         photo_style = scenario.get("photo_style", "selfie")
-        camera_note = (
-            "handheld candid style, filmed by a friend, natural perspective"
-            if photo_style == "friend_shot"
-            else "selfie style, front camera, arm extended"
-        )
+        camera_note = {
+            "friend_shot":      "handheld candid style, filmed by a friend, natural perspective",
+            "selfie_stick":     "selfie stick style, wider angle, full body or 3/4 shot, natural casual framing",
+            "mirror_living":    "mirror selfie in living room, full-length mirror, character reflected holding phone",
+            "mirror_washroom":  "bathroom mirror selfie, washroom setting, character reflected in mirror",
+        }.get(photo_style, "selfie style, front camera, arm extended")
 
         response = self.openai_client.chat.completions.create(
             model="gpt-4o",
@@ -811,8 +908,22 @@ Output only the prompt, no explanation.""",
             print(f"  ❌ Discord 送信失敗: {res.status_code}")
             return None
 
-        message_id = res.json().get("id")
+        msg_data   = res.json()
+        message_id = msg_data.get("id")
+        channel_id = msg_data.get("channel_id")
         print(f"  ✅ ブリーフィング送信完了（メッセージID: {message_id}）")
+
+        # ✅/❌ リアクションを追加
+        bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+        if message_id and channel_id and bot_token:
+            headers = {"Authorization": f"Bot {bot_token}"}
+            for emoji in ["✅", "❌"]:
+                requests.put(
+                    f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{requests.utils.quote(emoji)}/@me",
+                    headers=headers,
+                )
+            print("  👍 ✅/❌ リアクション追加完了")
+
         return message_id
 
     def _send_story_images_discord(self, story_images: list, ctx: dict):

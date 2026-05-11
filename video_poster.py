@@ -59,7 +59,7 @@ def check_and_post_video() -> bool:
                 # Discord からダウンロードして一時ファイルに保存
                 with tempfile.TemporaryDirectory() as tmpdir:
                     raw_path   = Path(tmpdir) / filename
-                    clean_path = Path(tmpdir) / f"clean_{filename}"
+                    clean_path = Path(tmpdir) / f"clean_{Path(filename).stem}_iphone.mov"
 
                     print("  ⬇️  動画ダウンロード中...")
                     _download_file(attachment["url"], raw_path)
@@ -124,6 +124,7 @@ def _post_reel_resumable(video_path: Path, caption: str, ig_user_id: str, page_t
         params={
             "media_type":    "REELS",
             "upload_type":   "resumable",
+            "content_type":  "video/quicktime",  # .mov ファイルのため明示指定
             "caption":       caption,
             "share_to_feed": "true",
             "access_token":  page_token,
