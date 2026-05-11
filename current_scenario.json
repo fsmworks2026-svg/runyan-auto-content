@@ -1,17 +1,29 @@
 {
-  "title": "カフェでのひととき",
-  "scenario": "るーにゃは大学の授業終わりにお気に入りのカフェに立ち寄る。カウンター席でコーヒーを飲みながら、スマホでInstagram用の写真を撮影。カメラに向かって微笑んだあと、ふと窓の外を眺めて、小さくため息をつく。大人っぽく見せたいけど、内心は少し寂しい。",
-  "caption": "授業後のカフェタイム☕️ ちょっと一息つきながら、また新しい自分を探してみる。",
-  "mood": "thoughtful",
-  "setting": "カフェ",
+  "title": "新カフェで見つけた、大人なひととき",
+  "scenario": "るーにゃは平日の午後に、最近注目されている新しいカフェを訪れることに。大人っぽい雰囲気の中でコーヒーを楽しんでいる様子をリールに収めます。カフェでの一人時間を楽しみながらも、内心では『一人で来るのもいいけど、誰かと一緒に来られたらもっと楽しいのにな』と考えています。最後には、カフェで見つけた可愛いスイーツを紹介しながら、視聴者に『あなたならこのスイーツ、誰と一緒に食べたい？』と問いかけます。",
+  "caption": "新しいカフェでちょっと背伸びしたひととき☕️ #るーにゃ #大学生 #カフェ巡り",
+  "mood": "relatable",
+  "setting": "新しいカフェ",
   "makeup_style": "gachi",
-  "key_dialogue": "本当の自分って、どんなだろう？",
+  "photo_style": "selfie",
+  "outfit": "black turtleneck, denim jeans, ankle boots",
+  "key_dialogue": "この可愛いスイーツ、誰と一緒に食べたい？",
+  "save_reason": "カフェ・スポット情報",
+  "share_element": "心が動く本音の一言",
+  "interactive_element": "あなたならこのスイーツ、誰と一緒に食べたい？",
+  "shots": [
+    "1枚目：Entrance of the new cafe with a cozy and elegant vibe",
+    "2枚目：ルーニャ enjoying her coffee, a serene smile on her face",
+    "3枚目：Close-up of the cute dessert on the table",
+    "4枚目：ルーニャ holding the dessert, pondering with a playful smile"
+  ],
   "hashtags": [
     "#るーにゃ",
     "#大学生",
-    "#カフェタイム",
-    "#ひとり時間"
+    "#カフェ巡り",
+    "#一人時間",
+    "#スイーツ"
   ],
-  "discord_message_id": "1502741327677493325",
-  "discord_status": "approved"
+  "discord_message_id": "1503205039571734631",
+  "discord_status": "pending"
 }
