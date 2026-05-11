@@ -65,7 +65,8 @@ class RunyanContentGenerator:
             daily_theme = theme_override
             print(f"  テーマ上書き: {daily_theme}")
         else:
-            day_of_week = datetime.now().weekday()  # 0=月, 6=日
+            from zoneinfo import ZoneInfo
+            day_of_week = datetime.now(ZoneInfo("Asia/Tokyo")).weekday()  # 0=月, 6=日（JST基準）
             theme_schedule = {
                 0: "グルメ・カフェ（月：新しい場所チャレンジ）",
                 1: "ファッション・コーディネート（火：推しコーデ）",
