@@ -10,6 +10,10 @@ on:
         description: '今日のテーマを指定（例：カフェで友達と）。空欄で曜日テーマを自動選択'
         required: false
         default: ''
+      is_spot_reel:
+        description: 'スポット投稿（"新規:" コマンド経由）の場合 true を指定'
+        required: false
+        default: 'false'
 
 permissions:
   contents: write
@@ -40,6 +44,7 @@ jobs:
           CHARACTER_AGE: 21
           CHARACTER_BIRTHDAY: 12月20日
           THEME_OVERRIDE: ${{ github.event.inputs.theme_override }}
+          IS_SPOT_REEL: ${{ github.event.inputs.is_spot_reel }}
         run: |
           python main.py scenario
 

@@ -1,13 +1,16 @@
-name: Runyan Step3 - 動画投稿（Instagram リール）
+name: Runyan - フィード自動投稿
 
 on:
+  schedule:
+    - cron: '10  6 * * *'  # 15:10 JST  食べ物写真（13〜17時帯）
+    - cron: '10 11 * * *'  # 20:10 JST  人物写真（18〜22時帯）
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  post-video:
+  post-feed:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,18 +27,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Discord #video-uploads を確認してInstagramに投稿
+      - name: フィード画像を投稿
         env:
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-          DISCORD_VIDEO_CHANNEL_ID: "1503066020745576660"
           INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
           INSTAGRAM_PAGE_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_PAGE_ACCESS_TOKEN }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: python video_poster.py
+        run: python feed_poster.py
 
-      - name: 処理済みIDを保存
+      - name: 投稿済みログを保存
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_video_id.json
-          git diff --staged --quiet || (git commit -m "chore: 動画投稿済みIDを更新" && git pull --rebase && git push)
+          git add feed_posted_log.json || true
+          git diff --staged --quiet || (git commit -m "chore: フィード投稿済みログを更新" && git pull --rebase && git push)

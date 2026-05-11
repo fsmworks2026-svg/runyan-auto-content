@@ -312,6 +312,10 @@ Mood: {scenario.get('mood', 'casual')}
             with open(image_path, "wb") as f:
                 f.write(image_data)
 
+            # AI生成メタデータを除去し iPhone 15 Pro の EXIF に置き換える（PNG→JPEG）
+            from strip_metadata import strip_image
+            image_path = strip_image(image_path)
+
             print(f"✅ 画像生成完了: {image_path}")
             return str(image_path)
 
@@ -551,6 +555,9 @@ Mood: {scenario.get('mood', 'casual')}
             print("❌ シナリオ生成失敗")
             return
 
+        # IS_SPOT_REEL=true の場合はスポット投稿フラグを付与（"新規:" コマンド経由）
+        scenario["is_spot"] = os.getenv("IS_SPOT_REEL", "false").lower() == "true"
+
         # シナリオをファイルに保存（次のステップで使用）
         scenario_path = Path("./current_scenario.json")
         with open(scenario_path, "w", encoding="utf-8") as f:
@@ -670,6 +677,23 @@ Output only the prompt, no explanation.""",
 
         print(f"✅ シナリオ読み込み: {scenario.get('title')}")
 
+        # リール投稿チェック
+        # is_spot=True（"新規:" スポット投稿）はスケジュール外 → チェックしない
+        # 通常フロー（ブリーフィング・修正）は daily_context を参照して has_reel=False ならスキップ
+        if not scenario.get("is_spot", False):
+            from datetime import timezone as _tz, timedelta as _td
+            import daily_context as _dc
+            _jst   = _tz(_td(hours=9))
+            _today = datetime.now(_jst).date()
+            _ctx   = _dc.load_or_create(_today, openai_client=None)
+            if not _ctx.get("has_reel", True):
+                print("今日はリール投稿なし（スケジュール外）")
+                if DISCORD_WEBHOOK_URL:
+                    requests.post(DISCORD_WEBHOOK_URL, json={
+                        "content": "📅 今日はリール投稿なし。ストーリーズのみです。"
+                    })
+                return
+
         # メインショットを生成
         main_shot = scenario.get("main_shot", scenario.get("shots", [""])[0] if scenario.get("shots") else "")
         image_path = self.generate_image(scenario, shot_description=main_shot, shot_index=0)
@@ -694,11 +718,271 @@ Output only the prompt, no explanation.""",
         print("=" * 50)
 
 
+    def _send_briefing_discord(self, ctx: dict, scenario: dict, story_images: list, feed_image_path=None) -> str | None:
+        """ブリーフィング情報を Discord に一括送信し、メッセージIDを返す"""
+        pw = ctx["reel_post_window"]
+        makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
+        makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
+
+        # リール・フィード投稿状況
+        reel_status = f"あり（{pw[0]}〜{pw[1]}時±20分）" if ctx.get("has_reel") else "なし（ストーリーズのみ）"
+        if ctx.get("has_feed"):
+            feed_pw   = ctx.get("feed_post_window", [])
+            feed_time = f"（{feed_pw[0]}〜{feed_pw[1]}時±20分）" if len(feed_pw) == 2 else ""
+            feed_kind = "料理・カフェ写真" if ctx.get("feed_type") == "food" else "人物写真（リール流用）"
+            feed_status = f"あり — {feed_kind}{feed_time}"
+        else:
+            feed_status = "なし"
+
+        # ストーリーズスロットを1行ずつ組み立て
+        slots_text = ""
+        for slot in ctx["story_slots"]:
+            pw_s = slot["post_window"]
+            conceal = "（顔隠し）" if slot["no_makeup"] else ""
+            slots_text += f"{slot['emoji']} {slot['label']} {pw_s[0]}〜{pw_s[1]}時{conceal}\n"
+
+        fields = [
+            # ─ 投稿予定 ─
+            {"name": "🎬 リール",
+             "value": reel_status,
+             "inline": True},
+            {"name": "🖼️ フィード",
+             "value": feed_status,
+             "inline": True},
+            # ─ スケジュール ─
+            {"name": "🗓️ スケジュール",
+             "value": f"午後：{ctx['afternoon']['label']}\n夜：{ctx['evening']['label']}",
+             "inline": True},
+            {"name": "🌤️ 季節",
+             "value": ctx["season_jp"],
+             "inline": True},
+            # ─ 衣装 ─
+            {"name": "👗 私服（リール・外出ストーリーズ共通）",
+             "value": ctx["casual_outfit"],
+             "inline": False},
+            {"name": "🏠 部屋着",
+             "value": ctx["room_wear"],
+             "inline": True},
+            {"name": "😴 寝間着",
+             "value": ctx["pajamas"],
+             "inline": True},
+            # ─ ストーリーズ ─
+            {"name": "📱 ストーリーズ予定",
+             "value": slots_text.strip(),
+             "inline": False},
+        ]
+
+        # リールがある日だけシナリオ詳細を表示
+        if ctx.get("has_reel"):
+            fields.insert(4, {
+                "name": "🎭 リールシナリオ",
+                "value": f"**{scenario.get('title')}**\n{scenario.get('scenario', '')[:200]}",
+                "inline": False,
+            })
+            fields.insert(5, {
+                "name": "🎭 舞台 / メイク",
+                "value": f"{scenario.get('setting', '')} / {makeup}",
+                "inline": True,
+            })
+
+        embed = {
+            "title": f"📅 明日のるーにゃ — {ctx['date_display']}",
+            "color": 0x7289DA,
+            "fields": fields,
+            "footer": {"text": "✅ でコンテンツ確定 → 生成キュー開始（リール画像・ストーリーズ投稿）"},
+        }
+
+        # フード画像がある場合は一緒に添付
+        if feed_image_path and Path(feed_image_path).exists():
+            from pathlib import Path as P
+            img_path = P(feed_image_path)
+            mime = "image/jpeg" if img_path.suffix.lower() == ".jpg" else "image/png"
+            import json as _json
+            with open(img_path, "rb") as f:
+                res = requests.post(
+                    DISCORD_WEBHOOK_URL + "?wait=true",
+                    data={"payload_json": _json.dumps({"embeds": [embed]})},
+                    files={"file": (img_path.name, f, mime)},
+                )
+        else:
+            res = requests.post(DISCORD_WEBHOOK_URL + "?wait=true", json={"embeds": [embed]})
+
+        if res.status_code != 200:
+            print(f"  ❌ Discord 送信失敗: {res.status_code}")
+            return None
+
+        message_id = res.json().get("id")
+        print(f"  ✅ ブリーフィング送信完了（メッセージID: {message_id}）")
+        return message_id
+
+    def _send_story_images_discord(self, story_images: list, ctx: dict):
+        """ストーリーズ画像4枚を Discord に別メッセージで一括送信する"""
+        if not DISCORD_WEBHOOK_URL or not story_images:
+            return
+
+        slot_map = {s["id"]: s for s in ctx.get("story_slots", [])}
+        files    = {}
+        opened   = []
+
+        try:
+            for i, path in enumerate(story_images):
+                p = Path(str(path))
+                if not p.exists():
+                    continue
+                f    = open(p, "rb")
+                opened.append(f)
+                mime = "image/jpeg" if p.suffix.lower() == ".jpg" else "image/png"
+                files[f"files[{i}]"] = (p.name, f, mime)
+
+            if not files:
+                print("  ⚠️  送信できるストーリーズ画像がありません")
+                return
+
+            # スロット情報をコンテンツに組み立て
+            lines = ["📱 **ストーリーズ画像確認**"]
+            for slot in ctx.get("story_slots", []):
+                pw = slot["post_window"]
+                lines.append(f"{slot['emoji']} {slot['label']}  {pw[0]}〜{pw[1]}時")
+
+            res = requests.post(
+                DISCORD_WEBHOOK_URL,
+                data={"content": "\n".join(lines)},
+                files=files,
+            )
+            if res.status_code in (200, 204):
+                print(f"  ✅ ストーリーズ画像 {len(files)} 枚を Discord に送信しました")
+            else:
+                print(f"  ❌ ストーリーズ画像送信失敗: {res.status_code}")
+        except Exception as e:
+            print(f"  ❌ ストーリーズ画像送信エラー: {e}")
+        finally:
+            for f in opened:
+                f.close()
+
+    def _notify_video_upload_request(self, ctx: dict, scenario: dict):
+        """#video-uploads チャンネルに動画アップロード依頼を Bot として送信"""
+        bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+        channel_id = os.getenv("DISCORD_VIDEO_CHANNEL_ID", "1503066020745576660")
+        if not bot_token:
+            print("  ⚠️  DISCORD_BOT_TOKEN 未設定 → 動画依頼スキップ")
+            return
+
+        pw = ctx["reel_post_window"]
+        content = (
+            f"📹 **本日のリール動画アップロード依頼**\n"
+            f"シーン：{scenario.get('setting', '')}\n"
+            f"投稿ウィンドウ：{pw[0]}〜{pw[1]}時（±20分）\n"
+            f"↑ このメッセージに **返信** する形で動画ファイルをアップロードしてください"
+        )
+        try:
+            res = requests.post(
+                f"https://discord.com/api/v10/channels/{channel_id}/messages",
+                headers={"Authorization": f"Bot {bot_token}"},
+                json={"content": content},
+                timeout=15,
+            )
+            if res.status_code in (200, 201):
+                msg_id = res.json().get("id")
+                print(f"  ✅ 動画依頼送信完了（メッセージID: {msg_id}）")
+                # video_poster.py が参照できるよう保存
+                Path("./video_upload_request.json").write_text(
+                    json.dumps({"message_id": msg_id, "date": ctx["date"]}, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+            else:
+                print(f"  ❌ 動画依頼送信失敗: {res.status_code}")
+        except Exception as e:
+            print(f"  ❌ 動画依頼送信エラー: {e}")
+
+    def run_briefing_mode(self):
+        """前日21時実行：翌日のコンテキスト・シナリオ・ストーリーズ画像を一括生成してDiscordに投稿"""
+        from datetime import date, timedelta
+        import daily_context as dc
+        import generate_stories as gs
+
+        tomorrow = date.today() + timedelta(days=1)
+
+        print("=" * 55)
+        print(f"📅 ブリーフィングモード開始 → {tomorrow}")
+        print("=" * 55)
+
+        # 1. 日次コンテキスト生成（翌日分）
+        print("\n[1/3] 日次コンテキスト生成")
+        ctx = dc.load_or_create(tomorrow, openai_client=self.openai_client)
+        print(f"  ✅ {ctx['date_display']} / {ctx['season_jp']}")
+        print(f"  午後: {ctx['afternoon']['label']}  夜: {ctx['evening']['label']}")
+
+        # 2. シナリオ生成（daily_context の活動をテーマに設定）
+        print("\n[2/3] シナリオ生成")
+        os.environ["THEME_OVERRIDE"] = f"{ctx['afternoon']['label']}・{ctx['afternoon']['scene']}"
+        scenario = self.generate_scenario()
+        os.environ.pop("THEME_OVERRIDE", None)
+
+        if not scenario:
+            print("❌ シナリオ生成失敗")
+            return
+
+        # daily_context の私服でシナリオ outfit を上書き（リールと外出ストーリーズを一致させる）
+        scenario["outfit"]    = ctx["casual_outfit"]
+        # 投稿フラグを保存して generate モードが参照できるようにする
+        scenario["has_reel"]  = ctx["has_reel"]
+        scenario["has_feed"]  = ctx["has_feed"]
+        scenario["feed_type"] = ctx.get("feed_type", "none")
+
+        scenario_path = Path("./current_scenario.json")
+        with open(scenario_path, "w", encoding="utf-8") as f:
+            json.dump(scenario, f, ensure_ascii=False, indent=2)
+        print(f"  ✅ シナリオ: {scenario.get('title')}")
+
+        # 3. ストーリーズ画像生成（Discord への個別送信はスキップ）
+        print("\n[3/3] ストーリーズ画像生成")
+        story_images = gs.generate_all(target_date=tomorrow, notify_discord=False)
+
+        # フィード画像生成（food タイプの場合のみブリーフィング時に生成）
+        feed_image_path = None
+        if ctx.get("has_feed") and ctx.get("feed_type") == "food":
+            print("\n[フィード] 料理・カフェ画像生成")
+            import generate_feed as gf
+            feed_image_path = gf.generate_food_image(ctx.get("feed_food_scene", ""), ctx["date"])
+            if feed_image_path:
+                print(f"  ✅ フィード画像: {feed_image_path.name}")
+            else:
+                print("  ⚠️  フィード画像生成失敗（後で手動生成可）")
+        elif ctx.get("has_feed") and ctx.get("feed_type") == "person":
+            print("\n[フィード] person タイプ — リール画像を後で流用（今は生成不要）")
+
+        # 4. ブリーフィングを Discord に一括送信してメッセージIDを保存
+        print("\n[Discord] ブリーフィング送信")
+        message_id = self._send_briefing_discord(ctx, scenario, story_images, feed_image_path=feed_image_path)
+        if message_id:
+            # ストーリーズ画像を別メッセージで確認用に送信
+            if story_images:
+                self._send_story_images_discord(story_images, ctx)
+            scenario["discord_message_id"] = message_id
+            scenario["discord_status"]     = "pending"
+            scenario["briefing_date"]      = ctx["date"]
+            with open(scenario_path, "w", encoding="utf-8") as f:
+                json.dump(scenario, f, ensure_ascii=False, indent=2)
+
+        # 5. リールがある日だけ #video-uploads に動画依頼を送信
+        if ctx.get("has_reel"):
+            print("\n[Discord] 動画アップロード依頼送信")
+            self._notify_video_upload_request(ctx, scenario)
+        else:
+            print("\n[スキップ] 今日はリールなし → 動画依頼なし")
+
+        print("\n" + "=" * 55)
+        print("✅ ブリーフィング完了 — Discord の ✅ を待っています")
+        print("=" * 55)
+
+
 if __name__ == "__main__":
     import sys
     mode = sys.argv[1] if len(sys.argv) > 1 else "scenario"
     generator = RunyanContentGenerator()
     if mode == "generate":
         generator.run_generate_mode()
+    elif mode == "briefing":
+        generator.run_briefing_mode()
     else:
         generator.run_scenario_mode()
