@@ -1,29 +1,25 @@
 {
-  "title": "新カフェで見つけた、大人なひととき",
-  "scenario": "るーにゃは平日の午後に、最近注目されている新しいカフェを訪れることに。大人っぽい雰囲気の中でコーヒーを楽しんでいる様子をリールに収めます。カフェでの一人時間を楽しみながらも、内心では『一人で来るのもいいけど、誰かと一緒に来られたらもっと楽しいのにな』と考えています。最後には、カフェで見つけた可愛いスイーツを紹介しながら、視聴者に『あなたならこのスイーツ、誰と一緒に食べたい？』と問いかけます。",
-  "caption": "新しいカフェでちょっと背伸びしたひととき☕️ #るーにゃ #大学生 #カフェ巡り",
-  "mood": "relatable",
-  "setting": "新しいカフェ",
+  "title": "新しいカフェで大人のふり",
+  "scenario": "今日はいつもと違うカフェに挑戦する日。おしゃれな街中にある新しいカフェに訪れたるーにゃ。店内に入ると、アンティークな家具に囲まれた落ち着いた空間が広がっていた。まずはカウンターで人気のラテを注文。カップに描かれた素敵なラテアートに心が躍る。友達に撮影してもらい、窓際の席に座ってコーヒーを両手で持ちながら外を眺める。ふと、『背伸びしちゃってるけど、こういう時間も大事だよね』と心に思う。",
+  "caption": "#新しいカフェ #ラテアート #大人時間 今日はちょっと背伸びして、新しいカフェで大人の時間を楽しんできました☕️普段はぼっちだけど、たまにはこんな時間もいいよね。皆さんのオススメカフェも教えてください！",
+  "mood": "thoughtful",
+  "setting": "アンティークな家具が並ぶ落ち着いたカフェ",
   "makeup_style": "gachi",
-  "photo_style": "selfie",
-  "outfit": "black turtleneck, denim jeans, ankle boots",
-  "key_dialogue": "この可愛いスイーツ、誰と一緒に食べたい？",
+  "photo_style": "friend_shot",
+  "outfit": "black turtleneck sweater, blue jeans, brown ankle boots",
+  "key_dialogue": "こういう時間も大事だよね",
   "save_reason": "カフェ・スポット情報",
   "share_element": "心が動く本音の一言",
-  "interactive_element": "あなたならこのスイーツ、誰と一緒に食べたい？",
-  "shots": [
-    "1枚目：Entrance of the new cafe with a cozy and elegant vibe",
-    "2枚目：ルーニャ enjoying her coffee, a serene smile on her face",
-    "3枚目：Close-up of the cute dessert on the table",
-    "4枚目：ルーニャ holding the dessert, pondering with a playful smile"
-  ],
+  "interactive_element": "皆さんのオススメカフェも教えてください！",
+  "main_shot": "カフェの窓際でコーヒーを両手で持ちながら外を眺めている",
+  "best_posting_time": "14:00〜16:00。カフェ巡りをしたくなる午後の時間帯だから。",
   "hashtags": [
     "#るーにゃ",
     "#大学生",
     "#カフェ巡り",
-    "#一人時間",
-    "#スイーツ"
+    "#グルメ女子",
+    "#背伸び"
   ],
-  "discord_message_id": "1503205039571734631",
+  "discord_message_id": "1503207873751023717",
   "discord_status": "pending"
 }
