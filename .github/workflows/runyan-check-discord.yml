@@ -89,21 +89,24 @@ jobs:
               if not content:
                   continue
 
-              overrides = {}
               if content.upper() == "OK" or content == "✅":
+                  # OK → Step2（画像生成）を起動
                   print(f"承認メッセージを検出: {content}")
+                  workflow = "runyan-generate.yml"
+                  inputs = {}
               else:
-                  print(f"修正コメントを検出: {content}")
-                  overrides["override_scenario"] = content
+                  # 修正コメント → Step1（シナリオ再生成）を起動
+                  print(f"修正コメントを検出: {content} → シナリオ再生成します")
+                  workflow = "runyan-scenario.yml"
+                  inputs = {"theme_override": content}
 
-              # Step2 を起動
               gh_res = requests.post(
-                  f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/runyan-generate.yml/dispatches",
+                  f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/{workflow}/dispatches",
                   headers={
                       "Authorization": f"token {GITHUB_PAT}",
                       "Accept": "application/vnd.github.v3+json",
                   },
-                  json={"ref": "master", "inputs": overrides},
+                  json={"ref": "master", "inputs": inputs},
               )
 
               if gh_res.status_code == 204:
