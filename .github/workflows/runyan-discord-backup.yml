@@ -201,6 +201,55 @@ jobs:
                       sys.exit(1)
                   break
 
+              # ── 「フィードに変更:」／「リールに変更:」コマンド ──
+              if content.startswith("フィードに変更:") or content.startswith("リールに変更:"):
+                  to_feed = content.startswith("フィードに変更:")
+                  label   = "フィード" if to_feed else "リール"
+                  print(f"{label}変更コマンドを検出")
+                  import base64
+                  # current_scenario.json を GitHub Contents API で取得・更新
+                  sc_res = requests.get(
+                      f"https://api.github.com/repos/{GH_REPO}/contents/current_scenario.json",
+                      headers={"Authorization": f"token {GH_PAT}", "Accept": "application/vnd.github.v3+json"},
+                  )
+                  if sc_res.status_code == 200:
+                      sc_data    = sc_res.json()
+                      scenario   = json.loads(base64.b64decode(sc_data["content"]).decode("utf-8"))
+                      sc_sha     = sc_data["sha"]
+                      if to_feed:
+                          scenario["has_reel"]  = False
+                          scenario["has_feed"]  = True
+                          scenario["feed_type"] = "person"
+                      else:
+                          scenario["has_reel"]  = True
+                          scenario["has_feed"]  = False
+                          scenario["feed_type"] = "none"
+                      encoded = base64.b64encode(
+                          json.dumps(scenario, ensure_ascii=False, indent=2).encode("utf-8")
+                      ).decode("ascii")
+                      put_res = requests.put(
+                          f"https://api.github.com/repos/{GH_REPO}/contents/current_scenario.json",
+                          headers={"Authorization": f"token {GH_PAT}", "Accept": "application/vnd.github.v3+json"},
+                          json={"message": f"chore: コンテンツ形式を{label}に変更（バックアップBot）", "content": encoded, "sha": sc_sha},
+                      )
+                      if put_res.status_code in (200, 201):
+                          print(f"✅ current_scenario.json を{label}に更新しました")
+                      else:
+                          print(f"❌ current_scenario.json 更新失敗: {put_res.status_code}")
+                          sys.exit(1)
+                  else:
+                      print(f"❌ current_scenario.json 取得失敗: {sc_res.status_code}")
+                      sys.exit(1)
+                  gh_res = trigger_workflow("runyan-generate.yml")
+                  if gh_res:
+                      print(f"✅ runyan-generate.yml を起動しました")
+                      state["last_id"] = msg["id"]
+                      state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+                  else:
+                      print(f"❌ runyan-generate.yml 起動失敗")
+                      sys.exit(1)
+                  break
+
               # ── 「リール作り直し:」コマンド ──
               if content.startswith("リール作り直し:"):
                   print(f"リール作り直しコマンドを検出")

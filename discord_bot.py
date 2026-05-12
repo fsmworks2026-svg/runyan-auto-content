@@ -308,6 +308,31 @@ async def on_message(message: discord.Message):
                 print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
         return
 
+    # ── 「フィードに変更:」／「リールに変更:」コマンド ──
+    if content.startswith("フィードに変更:") or content.startswith("リールに変更:"):
+        to_feed = content.startswith("フィードに変更:")
+        label   = "フィード" if to_feed else "リール"
+        print(f"\n[{now}] {label}変更コマンド検出")
+        scenario, sha = get_github_file("current_scenario.json")
+        if not scenario:
+            print("  ❌ current_scenario.json が取得できません")
+            return
+        if to_feed:
+            scenario["has_reel"]  = False
+            scenario["has_feed"]  = True
+            scenario["feed_type"] = "person"
+        else:
+            scenario["has_reel"]  = True
+            scenario["has_feed"]  = False
+            scenario["feed_type"] = "none"
+        put_github_file(
+            "current_scenario.json", scenario, sha,
+            f"chore: コンテンツ形式を{label}に変更（DiscordBot）",
+        )
+        ok = trigger_workflow("runyan-generate.yml")
+        print(f"  runyan-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+        return
+
     # ── 「リール作り直し:」コマンド ──
     if content.startswith("リール作り直し:"):
         print(f"\n[{now}] リール作り直しコマンド検出")
