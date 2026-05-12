@@ -173,7 +173,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 {outfit}を着ている。
 
 その子がベッドに座り、スマホのインカメラで自撮りをしている。
-顔はすっぴんなので、可愛い星のスタンプで目元を少し隠している。
+顔はすっぴんなので、鼻の上から目の下にかけて可愛い星のスタンプを貼っており、目元が少し透けて見える。
 
 フォトリアリスティック。縦9:16。Instagramストーリーズ。
 季節：{ctx['season_jp']} — {ctx['season_weather']}"""
