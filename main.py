@@ -166,12 +166,11 @@ Instagramでのリール投稿用のコンテンツを作成しています。
 - "suppin": すっぴん（家・起き抜け・勉強・だらだら系の場面等）
 
 【撮影スタイルの選択ルール】
-- "selfie": 一人・室内（前カメラ・腕を伸ばしたバストアップ自撮り）
-- "selfie_stick": 一人・屋外 or カフェ（自撮り棒使用・少し引いた画角・全身〜バストアップ）。三脚は持ち歩かない設定。
+- "selfie": 一人（室内・屋外問わず）前カメラで腕を伸ばしたバストアップ〜全身自撮り
 - "mirror_living": 一人・自宅リビング（姿見に全身を映してスマホで自撮り。コーデ確認・ファッション系に最適）
 - "mirror_washroom": 一人・洗面所（洗面台の鏡に映してスマホで自撮り。スキンケア・メイク・朝ルーティン系に最適）
 - "friend_shot": 友達・複数人のいるシーン（友達に撮ってもらった自然な感じ）
-※ 一人で屋外・大学・カフェは必ず "selfie_stick"。自宅でコーデや全身を見せたいときは "mirror_living"。スキンケア・洗顔系は "mirror_washroom"。
+※ 一人で屋外・大学・カフェは "selfie"。自宅でコーデや全身を見せたいときは "mirror_living"。スキンケア・洗顔系は "mirror_washroom"。
 
 【ハッシュタグの禁止事項】
 以下のようなAI・キャラクター系のハッシュタグは絶対に使わないこと：
@@ -187,7 +186,7 @@ Instagramでのリール投稿用のコンテンツを作成しています。
     "mood": "雰囲気（happy/thoughtful/excited/funny/relatable等）",
     "setting": "舞台設定",
     "makeup_style": "gachi / natural / suppin のいずれか",
-    "photo_style": "selfie / selfie_stick / mirror_living / mirror_washroom / friend_shot のいずれか",
+    "photo_style": "selfie / mirror_living / mirror_washroom / friend_shot のいずれか",
     "outfit": "その日の服装を英語で簡潔に記述（例: ivory knit top, beige wide pants, white sneakers）。4枚全ショット共通で使用する。",
     "key_dialogue": "キーセリフ（視聴者が「あ、わかる」となるセリフ）",
     "save_reason": "このコンテンツが保存されるポイント",
@@ -302,8 +301,6 @@ Instagramでのリール投稿用のコンテンツを作成しています。
         photo_style = scenario.get("photo_style", "selfie")
         if photo_style == "friend_shot":
             camera_text = "Candid shot by a friend.\nNatural perspective.\nSlightly off-center.\nNot a selfie."
-        elif photo_style == "selfie_stick":
-            camera_text = "Selfie stick shot.\nFront camera, wider angle than arm selfie.\nSlightly more distance from face.\nFull body or 3/4 shot possible.\nNatural casual angle, not tripod-level perfect framing."
         elif photo_style == "mirror_living":
             camera_text = "Mirror selfie in living room.\nFull-length mirror leaning against wall.\nCharacter reflected in mirror holding phone up to take photo.\nFull body or 3/4 visible in reflection.\nArm slightly raised holding phone, natural pose."
         elif photo_style == "mirror_washroom":
@@ -668,8 +665,7 @@ Mood: {scenario.get('mood', 'casual')}
         makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
         makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
         photo_labels = {
-            "selfie":           "📱 自撮り（室内）",
-            "selfie_stick":     "🤳 自撮り棒（屋外）",
+            "selfie":           "📱 自撮り（インカメラ）",
             "mirror_living":    "🪞 姿見ミラーセルフィー",
             "mirror_washroom":  "🚿 洗面鏡セルフィー",
             "friend_shot":      "👫 友達に撮ってもらう",

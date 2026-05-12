@@ -55,4 +55,6 @@ jobs:
           git add feed_output/ || true
           git add video_upload_request.json || true
           [ -f theme_history.json ] && git add theme_history.json || true
+          [ -f story_message_ids.json ] && git add story_message_ids.json || true
+          [ -f approved_slots.json ] && git add approved_slots.json || true
           git diff --staged --quiet || (git commit -m "chore: ブリーフィングを生成" && git pull --rebase && git push)

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 るーにゃ 最初の投稿（自己紹介リール）画像生成スクリプト
-4シーン + ベースキャラ画像（キャラ画像/runyan_natural.png）を生成する
+gpt-image-2 + quality_mode="thinking" + n=4 で4シーンを1回のAPIコールで一括生成。
+同一キャラクターの一貫性を最大化する。
 """
 
 import os
@@ -14,217 +15,201 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# 出力フォルダ
 output_dir = Path("./first_post")
-chara_dir = Path("./キャラ画像")
+chara_dir  = Path("./キャラ画像")
 output_dir.mkdir(exist_ok=True)
 chara_dir.mkdir(exist_ok=True)
 
-# ① Character Lock（全シーン毎回完全コピペ・変更禁止）
-CHARACTER_LOCK = """Same person in all images.
+BASE_PATH = chara_dir / "runyan_natural.png"
 
-A 21-year-old Japanese woman named Ru-nya.
-Identical facial features across all scenes.
-Soft droopy eyes, natural Japanese facial structure.
-Small face, gentle jawline, subtle nose bridge.
-Long dark brown semi-long hair with natural loose waves.
-Thin straight bangs with slightly separated strands.
+# 出力ファイル名（n=4 の順番と対応）
+SCENE_FILENAMES = [
+    "scene1_back_cafe.png",
+    "scene2_table_coffee.png",
+    "scene3_window_city.png",
+    "scene4_side_profile.png",
+]
+
+# 4シーン一括プロンプト（quality_mode="thinking" で一貫性確保）
+BATCH_PROMPT = """Same person in all 4 images.
+
+Ru-nya, 21-year-old Japanese woman.
+Consistent facial features across all scenes.
+Same hairstyle, same bangs, same eye shape, same face proportions.
+
+Soft slightly droopy eyes.
+Natural Japanese facial structure.
+Small face, gentle jawline.
 Fair smooth skin.
 
-Makeup:
-casual chic natural makeup,
-soft rosy cheeks,
-coral-beige lips,
-light eye makeup,
-fresh youthful university student vibe.
+Long dark brown semi-long hair with natural loose waves.
+Thin airy bangs.
 
-Fashion:
-simple clean feminine outfit,
-beige, ivory, white, light gray tones,
-minimal accessories,
-Instagram influencer aesthetic.
+Natural casual chic makeup.
+Soft rosy cheeks.
+Coral-beige lips.
+Light eye makeup.
 
-Mood:
-soft vulnerable atmosphere,
-natural realistic emotion,
-slightly lonely but beautiful.
+wearing the same ivory knit top.
+same outfit in all images.
 
 Photorealistic.
 Japanese cinematic realism.
-Vertical 9:16.
-Shot on 50mm lens.
+Warm natural light.
+50mm lens.
 Shallow depth of field.
-Warm natural lighting.
-Instagram reel aesthetic."""
+Soft bokeh.
+Instagram reel aesthetic.
+Vertical 9:16.
 
-# ② 服装固定（同日撮影・全シーン統一）
-OUTFIT_LOCK = (
-    "wearing the same ivory knit sweater, "
-    "same beige wide-leg trousers, "
-    "same small gold hoop earrings, "
-    "same outfit as all other scenes."
-)
+Generate exactly 4 images in this order:
 
-# ③ Scene Block（シーンごとの差分のみ・短く書く）
-SCENES = [
-    {
-        "filename": "scene1_back_cafe.png",
-        "prompt": f"""{CHARACTER_LOCK}
+Image 1 - Back Shot:
+Ru-nya sitting alone at a Tokyo cafe window seat, shot from behind.
+Face NOT visible, back of head only.
+Coffee cup on table. Golden hour light. Tokyo street outside.
 
-{OUTFIT_LOCK}
+Image 2 - Table Close-up:
+Close-up of her hands on the cafe table.
+Latte art coffee and open notebook. Ivory knit sleeve visible.
+Soft warm side light.
 
-Scene:
-Sitting alone at a cafe window seat in Tokyo, Japan.
-Shot from behind, face not visible, back of head only.
-Coffee cup on the table beside her.
-Quiet Tokyo street visible outside the window.
-Golden hour sunlight through the window.""",
-    },
-    {
-        "filename": "scene2_table_coffee.png",
-        "prompt": f"""{CHARACTER_LOCK}
-
-{OUTFIT_LOCK}
-
-Scene:
-Close-up of her hands on a cafe table in Tokyo.
-Latte art coffee cup and open notebook.
-Ivory knit sweater sleeve visible.
-Soft warm light, shallow depth of field.""",
-    },
-    {
-        "filename": "scene3_window_city.png",
-        "prompt": f"""{CHARACTER_LOCK}
-
-Scene:
-View through a Tokyo cafe window.
+Image 3 - Window View:
+View through the Tokyo cafe window from inside.
 Blurred Japanese street outside — narrow roads, Japanese storefronts.
-NOT European or American scenery.
-Faint reflection of a woman sitting alone in the glass.
-Golden hour light.""",
-    },
-    {
-        "filename": "scene4_side_profile.png",
-        "prompt": f"""{CHARACTER_LOCK}
+NOT European. Faint woman reflection in glass. Golden hour.
 
-{OUTFIT_LOCK}
-
-Scene:
-Side profile, turning slightly toward camera.
-Tokyo cafe window with soft bokeh background.
-Warm window light on her face.
+Image 4 - Side Profile:
+Ru-nya turning slightly toward camera, side profile.
+Accurate side profile, consistent facial proportions.
+Tokyo cafe window bokeh background. Warm window light.
 Calm expression, slightly lonely, not smiling.
-Smartphone selfie angle, slightly below eye level.""",
-    },
-]
+Selfie angle, slightly below eye level.
 
-# ベースキャラ画像（参照用・ナチュラルメイク版）
-BASE_CHARACTER_SCENE = {
-    "filename": "runyan_natural.png",
-    "prompt": f"""{CHARACTER_LOCK}
-
-{OUTFIT_LOCK}
-
-Scene:
-Front-facing portrait, looking directly at camera, calm gentle expression.
-Tokyo cafe interior background, soft bokeh.
-Character reference shot.""",
-}
+All 4 images: same Tokyo cafe, same day, same character, same outfit."""
 
 
-def generate_base_image(prompt: str, output_path: Path, label: str) -> bool:
-    """ベースキャラ画像のみテキストから生成（1回だけ使用）"""
-    print(f"  🎨 ベース生成中: {label}...")
+def save_image(data_item, output_path: Path) -> bool:
+    """レスポンスの1アイテムを画像ファイルとして保存（b64_json / url 両対応）"""
+    try:
+        if hasattr(data_item, "b64_json") and data_item.b64_json:
+            output_path.write_bytes(base64.b64decode(data_item.b64_json))
+        elif hasattr(data_item, "url") and data_item.url:
+            import requests
+            output_path.write_bytes(requests.get(data_item.url, timeout=60).content)
+        else:
+            print(f"  ❌ 画像データが取得できません: {data_item}")
+            return False
+        return True
+    except Exception as e:
+        print(f"  ❌ 保存エラー: {e}")
+        return False
+
+
+def generate_scenes_thinking() -> dict:
+    """gpt-image-2 Thinkingモードで4シーンを1回のAPIコールで一括生成"""
+    print("  🧠 gpt-image-2 Thinking mode で4シーン一括生成中...")
+    print("  （Thinkingモードは時間がかかる場合があります）")
+
+    results = {}
+
     try:
         response = client.images.generate(
-            model="gpt-image-1",
-            prompt=prompt,
-            size="1024x1536",
-            n=1,
+            model="gpt-image-2",
+            prompt=BATCH_PROMPT,
+            n=4,
+            size="576x1024",        # 9:16 縦型
+            quality_mode="thinking", # キャラクター一貫性を最大化
         )
-        image_data = base64.b64decode(response.data[0].b64_json)
-        output_path.write_bytes(image_data)
-        print(f"  ✅ 保存完了 [gpt-image-1]: {output_path}")
-        return True
+
+        for i, (item, filename) in enumerate(zip(response.data, SCENE_FILENAMES), 1):
+            path = output_dir / filename
+            ok = save_image(item, path)
+            if ok:
+                print(f"  ✅ シーン{i} 保存完了: {filename}")
+                results[f"シーン{i}"] = "✅"
+            else:
+                results[f"シーン{i}"] = "❌"
+
     except Exception as e:
-        print(f"  ❌ ベース画像生成失敗: {e}")
-        return False
+        print(f"  ❌ Thinking mode 生成失敗: {e}")
+        print("  ⚠️  quality_mode='thinking' 未対応の可能性。通常モードで再試行します...")
+        results = generate_scenes_fallback()
+
+    return results
 
 
-def generate_image_from_reference(reference_path: Path, scene_prompt: str, output_path: Path, label: str) -> bool:
-    """ベース参照画像を固定したまま、シーンだけ変えて生成（同一人物を維持）"""
-    print(f"  🎨 シーン生成中: {label}...")
+def generate_scenes_fallback() -> dict:
+    """Thinkingモード非対応時のフォールバック（参照画像ベース・個別生成）"""
+    if not BASE_PATH.exists():
+        print(f"  ❌ ベース画像がありません: {BASE_PATH}")
+        return {f"シーン{i}": "❌" for i in range(1, 5)}
 
-    # 顔・髪・メイクを固定するプレフィックス（顔一致率を最大化するキーワード）
-    fixed_prefix = (
-        "Same person as previous image. "
-        "Keep identical facial features. "
-        "Same eye shape and face proportions. "
-        "Soft droopy eyes. "
-        "Natural Japanese facial structure. "
-        "Same hairstyle and bangs. "
-        "Same hair color and length, same makeup style. "
-        "Do NOT change the character's appearance. "
-        "Only change the scene, background, clothing, and pose as described below. "
-    )
-    full_prompt = fixed_prefix + scene_prompt
+    SCENE_PROMPTS = [
+        f"{BATCH_PROMPT.split('Generate exactly')[0]}\nScene:\nBack shot at Tokyo cafe, face not visible.",
+        f"{BATCH_PROMPT.split('Generate exactly')[0]}\nScene:\nTable close-up, hands near latte, ivory knit sleeve.",
+        f"{BATCH_PROMPT.split('Generate exactly')[0]}\nScene:\nView through Tokyo cafe window, Japanese street outside.",
+        f"{BATCH_PROMPT.split('Generate exactly')[0]}\nScene:\nSide profile, selfie angle, Tokyo cafe bokeh, calm expression.",
+    ]
 
-    try:
-        with open(reference_path, "rb") as img_file:
-            response = client.images.edit(
-                model="gpt-image-1",
-                image=img_file,
-                prompt=full_prompt,
-                size="1024x1536",
-            )
-        image_data = base64.b64decode(response.data[0].b64_json)
-        output_path.write_bytes(image_data)
-        print(f"  ✅ 保存完了: {output_path}")
-        return True
-    except Exception as e:
-        print(f"  ❌ 生成失敗: {e}")
-        return False
+    results = {}
+    for i, (prompt, filename) in enumerate(zip(SCENE_PROMPTS, SCENE_FILENAMES), 1):
+        path = output_dir / filename
+        print(f"  🎨 シーン{i} 生成中（参照画像モード）...")
+        try:
+            with open(BASE_PATH, "rb") as img_file:
+                response = client.images.edit(
+                    model="gpt-image-2",
+                    image=img_file,
+                    prompt=prompt,
+                    size="576x1024",
+                )
+            ok = save_image(response.data[0], path)
+            results[f"シーン{i}"] = "✅" if ok else "❌"
+            if ok:
+                print(f"  ✅ シーン{i} 保存: {filename}")
+        except Exception as e:
+            print(f"  ❌ シーン{i} 失敗: {e}")
+            results[f"シーン{i}"] = "❌"
+
+    return results
 
 
 def main():
     print("=" * 55)
-    print("📸 るーにゃ 最初の投稿 画像生成（参照画像固定モード）")
-    print(f"出力先（4シーン）: {output_dir.resolve()}")
-    print(f"出力先（ベース）  : {chara_dir.resolve()}")
+    print("📸 るーにゃ 最初の投稿 画像生成")
+    print("   モデル: gpt-image-2 (Thinking mode)")
+    print(f"   出力先: {output_dir.resolve()}")
     print("=" * 55)
 
-    results = {}
-    base_path = chara_dir / BASE_CHARACTER_SCENE["filename"]
-
-    # ベースキャラ画像が未生成の場合のみ生成
+    # ベース画像チェック（上書き禁止）
     print("\n[ベースキャラ画像]")
-    if base_path.exists():
-        print(f"  ✅ 既存ファイルを使用: {base_path}")
-        results["ベース画像"] = "✅（既存）"
+    if BASE_PATH.exists():
+        print(f"  ✅ 既存使用（上書き禁止）: {BASE_PATH}")
     else:
-        ok = generate_base_image(BASE_CHARACTER_SCENE["prompt"], base_path, "ナチュラルメイク基準顔")
-        results["ベース画像"] = "✅" if ok else "❌"
+        print(f"  ⚠️  {BASE_PATH} なし（Thinkingモードでは不要・続行します）")
 
-    if not base_path.exists():
-        print("  ❌ ベース画像がないため4シーン生成をスキップ")
+    # 既存シーンをスキップする確認
+    missing = [fn for fn in SCENE_FILENAMES if not (output_dir / fn).exists()]
+    existing = [fn for fn in SCENE_FILENAMES if (output_dir / fn).exists()]
+
+    if existing:
+        print(f"\n  スキップ（既存）: {', '.join(existing)}")
+    if not missing:
+        print("  全シーン既存のため生成をスキップします")
+        print("  再生成したい場合は first_post フォルダのファイルを削除してください")
         return
 
-    # 4シーンをベース画像から生成（同一人物を維持）
-    print("\n[4シーン生成（ベース参照固定）]")
-    for i, scene in enumerate(SCENES, 1):
-        path = output_dir / scene["filename"]
-        ok = generate_image_from_reference(base_path, scene["prompt"], path, f"シーン{i}")
-        results[f"シーン{i}"] = "✅" if ok else "❌"
+    # 4シーン一括生成
+    print(f"\n[4シーン一括生成] 未生成: {len(missing)}枚")
+    results = generate_scenes_thinking()
 
-    # 結果サマリー
+    # サマリー
     print("\n" + "=" * 55)
-    print("🎉 生成完了 サマリー")
+    print("🎉 生成完了")
     for label, status in results.items():
         print(f"  {status} {label}")
     print("=" * 55)
-    print(f"\n📁 ファイル確認:")
-    print(f"  first_post\\       ← 最初の投稿4シーン")
-    print(f"  キャラ画像\\        ← パイプライン用ベース画像")
 
 
 if __name__ == "__main__":

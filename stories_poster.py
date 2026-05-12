@@ -2,7 +2,7 @@
 """
 Instagram Stories 自動投稿モジュール。
 daily_context の post_window に基づき、現在時刻に対応するスロットの画像を投稿する。
-承認状態は approved_dates.json で管理する（briefing 上書きによる race condition を防ぐため）。
+承認状態は approved_slots.json でスロット別に管理する（True = 承認済み）。
 """
 
 import os
@@ -109,13 +109,12 @@ def check_and_post_story():
     if force_slot:
         print(f"⚡ FORCE_SLOT モード: {force_slot}")
 
-    # 本日が承認済みか確認（FORCE_SLOT 時はスキップ）
+    # スロット別承認状態を読み込む（FORCE_SLOT 時はスキップ）
+    approved_slots_map = {}
     if not force_slot:
-        approved_path  = Path("./approved_dates.json")
-        approved_dates = json.loads(approved_path.read_text(encoding="utf-8")) if approved_path.exists() else []
-        if today_str not in approved_dates:
-            print(f"本日({today_str})は未承認。スキップ。")
-            sys.exit(0)
+        slots_path = Path("./approved_slots.json")
+        all_slots  = json.loads(slots_path.read_text(encoding="utf-8")) if slots_path.exists() else {}
+        approved_slots_map = all_slots.get(today_str, {})
 
     # 今日の daily_context を読み込む
     ctx_path = Path(f"./daily_contexts/context_{today_str}.json")
@@ -143,6 +142,12 @@ def check_and_post_story():
             start, end = slot["post_window"]
             end_clamp  = 24 if end >= 24 else end
             if start <= now_hour < end_clamp:
+                # スロット別承認チェック（True のみ投稿可）
+                approval = approved_slots_map.get(slot["id"])
+                if approval is not True:
+                    status = "未承認（pending）" if approval is None else "却下（❌）"
+                    print(f"{slot['emoji']} {slot['label']} スロットは{status}。スキップ。")
+                    sys.exit(0)
                 slot_to_post = slot
                 break
 
