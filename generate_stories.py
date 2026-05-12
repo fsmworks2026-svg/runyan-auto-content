@@ -154,26 +154,37 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         if is_night:
             room_text = (
                 "\nRoom setting: Japanese apartment bedroom at night. "
-                "Character sitting on the edge of the white linen bed. "
-                "Warm orange lamp on the light oak open shelf — this is the main light source. "
-                "Light oak desk on the left side. White pillow and blanket on the bed behind her. "
+                "Warm orange lamp on the light oak open shelf — the only light source. "
+                "Light oak desk on the left side. White linen bed with pillow and blanket. "
                 "Room is dim, only the warm lamp illuminates the space.\n"
             )
         else:
             room_text = (
                 "\nRoom setting: Japanese apartment bedroom in the morning. "
-                "Character sitting on the edge of the white linen bed. "
                 "Soft natural sunlight through white lace curtains on the window. "
                 "Light oak desk on the left, open shelf with small items on the right. "
-                "White pillow visible behind her.\n"
+                "White linen bed with pillow visible.\n"
             )
         room_style   = "mirror"  # pajamas では未使用
-        camera_text  = "\nFront camera selfie. Character sitting on the edge of the bed, arm extended toward camera. Slight downward angle.\n"
+        # 入口付近に立って外向きにセルフィー → bedroom_entrance 参照画像のアングルと一致する
+        camera_text  = (
+            "\nSelfie taken while standing at the bedroom doorway, facing outward. "
+            "Phone held at arm's length, front camera angled slightly downward. "
+            "The bedroom interior — bed, pillow, shelves — visible behind the character. "
+            "Casual relaxed pose, natural Instagram selfie framing.\n"
+        )
         conceal_text = (
             "\nFace concealment: A cute pastel pink star-shaped sticker is placed "
             "over the eyes area in the photo, covering from the eyebrows to the nose bridge. "
             "Like an Instagram story decoration. The rest of the face (lips, chin) is visible.\n"
         )
+
+    # 部屋参照画像がある場合、プロンプトに役割を明示する
+    room_image_path = _select_room_image(slot, room_style=room_style)
+    ref_role_text = (
+        "\nReference images: the first image is the character to reproduce exactly. "
+        "The second image is the room background — place the character inside this exact room.\n"
+    ) if room_image_path and room_image_path.exists() else ""
 
     prompt = f"""{CHARA_BASE}
 
@@ -184,10 +195,11 @@ Wearing {outfit}.
 Scene:
 {slot['scene_hint']}
 Season: {ctx['season_jp']} — {ctx['season_weather']}
-{room_text}{camera_text}{conceal_text}"""
+{room_text}{camera_text}{conceal_text}{ref_role_text}"""
 
-    # 部屋背景画像の選択（room_styleと一致させる）
-    room_image_path = _select_room_image(slot, room_style=room_style)
+    # room_image_path は上の ref_role_text 生成時に決定済み（casual の場合は None）
+    if outfit_type == "casual":
+        room_image_path = None
 
     style_label = f" [{room_style}]" if outfit_type == "room" else ""
     print(f"  🎨 [{slot['label']}]{style_label} 画像生成中...")
