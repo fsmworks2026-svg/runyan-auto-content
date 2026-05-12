@@ -201,6 +201,19 @@ jobs:
                       sys.exit(1)
                   break
 
+              # ── 「リール作り直し:」コマンド ──
+              if content.startswith("リール作り直し:"):
+                  print(f"リール作り直しコマンドを検出")
+                  gh_res = trigger_workflow("runyan-generate.yml")
+                  if gh_res:
+                      print(f"✅ runyan-generate.yml を起動しました")
+                      state["last_id"] = msg["id"]
+                      state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+                  else:
+                      print(f"❌ runyan-generate.yml 起動失敗")
+                      sys.exit(1)
+                  break
+
               # ── ストーリーズ個別作り直しコマンド ──
               matched_slot = None
               matched_hint = ""
@@ -225,6 +238,68 @@ jobs:
                       sys.exit(1)
                   break
 
+          # ══════════════════════════════════════════════════════════════════
+          # Part 3: ストーリーズスロット別リアクションチェック
+          # story_message_ids.json のスロット別メッセージに対して
+          # ✅ → True（承認）/ ❌ → False（却下）を approved_slots.json に記録
+          # ══════════════════════════════════════════════════════════════════
+          from datetime import datetime, timezone, timedelta
+          JST = timezone(timedelta(hours=9))
+          today_str = datetime.now(JST).strftime("%Y%m%d")
+
+          ids_path   = Path("story_message_ids.json")
+          slots_path = Path("approved_slots.json")
+
+          if ids_path.exists() and slots_path.exists():
+              ids_data       = json.loads(ids_path.read_text(encoding="utf-8"))
+              all_slots      = json.loads(slots_path.read_text(encoding="utf-8"))
+              today_ids      = ids_data.get(today_str, {})
+              today_approved = all_slots.get(today_str, {})
+              channel_id     = today_ids.get("channel_id") or os.getenv("DISCORD_SCENARIO_CHANNEL_ID")
+              updated        = False
+
+              for slot_id, msg_id in today_ids.items():
+                  if slot_id == "channel_id":
+                      continue
+                  if today_approved.get(slot_id) is not None:
+                      # 既に承認/却下済みはスキップ
+                      continue
+                  if not msg_id or not channel_id:
+                      continue
+
+                  # ✅ チェック
+                  ok_res = requests.get(
+                      f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}/reactions/%E2%9C%85",
+                      headers=HEADERS,
+                  )
+                  if ok_res.status_code == 200:
+                      reactors = [u for u in ok_res.json() if not u.get("bot")]
+                      if reactors:
+                          print(f"  ✅ {slot_id} 承認 ({reactors[0].get('username')})")
+                          today_approved[slot_id] = True
+                          updated = True
+                          continue
+
+                  # ❌ チェック
+                  ng_res = requests.get(
+                      f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}/reactions/%E2%9D%8C",
+                      headers=HEADERS,
+                  )
+                  if ng_res.status_code == 200:
+                      ng_users = [u for u in ng_res.json() if not u.get("bot")]
+                      if ng_users:
+                          print(f"  ❌ {slot_id} 却下")
+                          today_approved[slot_id] = False
+                          updated = True
+
+              if updated:
+                  all_slots[today_str] = today_approved
+                  slots_path.write_text(json.dumps(all_slots, ensure_ascii=False, indent=2), encoding="utf-8")
+                  print(f"approved_slots.json を更新しました: {today_approved}")
+              else:
+                  print("ストーリーズスロット: 新しいリアクションなし")
+          else:
+              print("story_message_ids.json / approved_slots.json なし。スキップ。")
           EOF
 
       - name: 変更ファイルを保存
@@ -233,4 +308,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add current_scenario.json last_command_id.json || true
           [ -f approved_dates.json ] && git add approved_dates.json || true
+          [ -f approved_slots.json ] && git add approved_slots.json || true
+          [ -f story_message_ids.json ] && git add story_message_ids.json || true
           git diff --staged --quiet || (git commit -m "chore: Discordバックアップポーリング結果を更新" && git pull --rebase && git push)

@@ -123,6 +123,41 @@ def get_briefing_message_id() -> str | None:
     return None
 
 
+def get_story_slot_by_message_id(message_id: str) -> str | None:
+    """
+    story_message_ids.json から今日のメッセージIDに対応するスロットIDを返す。
+    一致しない場合は None を返す。
+    """
+    today_str = datetime.now(JST).strftime("%Y%m%d")
+    ids_data, _ = get_github_file("story_message_ids.json")
+    if not ids_data:
+        return None
+    today_ids = ids_data.get(today_str, {})
+    for slot_id, msg_id in today_ids.items():
+        if slot_id == "channel_id":
+            continue
+        if str(msg_id) == message_id:
+            return slot_id
+    return None
+
+
+def update_story_slot_approval(slot_id: str, approved: bool):
+    """approved_slots.json の今日のスロット承認状態を更新する（True=承認 / False=却下）"""
+    today_str = datetime.now(JST).strftime("%Y%m%d")
+    all_slots, sha = get_github_file("approved_slots.json")
+    if all_slots is None:
+        all_slots, sha = {}, None
+    today_slots = all_slots.get(today_str, {})
+    today_slots[slot_id] = approved
+    all_slots[today_str] = today_slots
+    label = "承認" if approved else "却下"
+    put_github_file(
+        "approved_slots.json", all_slots, sha,
+        f"chore: ストーリーズ {slot_id} スロット{label}（ローカルBot）",
+    )
+    print(f"  approved_slots.json → {slot_id} = {approved}")
+
+
 def approve_briefing() -> bool:
     """
     ✅ 検知時: discord_status を approved に更新し、approved_dates.json に日付を追加する。
@@ -210,32 +245,39 @@ async def on_ready():
 
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
-    """ブリーフィングメッセージへのリアクションを監視する（✅ / ❌）"""
+    """ブリーフィング・ストーリーズスロットメッセージへのリアクションを監視する（✅ / ❌）"""
     if payload.channel_id != CHANNEL_ID:
         return
     # bot 自身のリアクションは無視
     if payload.user_id == client.user.id:
         return
 
-    message_id  = str(payload.message_id)
-    briefing_id = get_briefing_message_id()
+    message_id = str(payload.message_id)
+    emoji      = str(payload.emoji)
+    now        = datetime.now(JST).strftime("%Y-%m-%d %H:%M JST")
 
-    if not briefing_id or message_id != briefing_id:
+    # ── ブリーフィングメッセージへのリアクション ──
+    briefing_id = get_briefing_message_id()
+    if briefing_id and message_id == briefing_id:
+        print(f"\n[{now}] ブリーフィングリアクション: {emoji} (ID: {message_id})")
+        if emoji == "✅":
+            print("  → コンテンツ生成を起動します")
+            if approve_briefing():
+                ok = trigger_workflow("runyan-generate.yml")
+                print(f"  runyan-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+        elif emoji == "❌":
+            print("  → 今日のコンテンツをスキップします")
+            skip_briefing()
         return
 
-    emoji = str(payload.emoji)
-    now   = datetime.now(JST).strftime("%Y-%m-%d %H:%M JST")
-    print(f"\n[{now}] リアクション検知: {emoji} (メッセージID: {message_id})")
-
-    if emoji == "✅":
-        print("  → コンテンツ生成を起動します")
-        if approve_briefing():
-            ok = trigger_workflow("runyan-generate.yml")
-            print(f"  runyan-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
-
-    elif emoji == "❌":
-        print("  → 今日のコンテンツをスキップします")
-        skip_briefing()
+    # ── ストーリーズスロットメッセージへのリアクション ──
+    if emoji in ("✅", "❌"):
+        slot_id = get_story_slot_by_message_id(message_id)
+        if slot_id:
+            approved = (emoji == "✅")
+            label    = "承認" if approved else "却下"
+            print(f"\n[{now}] ストーリーズ {slot_id} スロット {label} (ID: {message_id})")
+            update_story_slot_approval(slot_id, approved)
 
 
 @client.event
@@ -264,6 +306,20 @@ async def on_message(message: discord.Message):
                 print(f"  last_command_id.json → {message.id}")
             except Exception as e:
                 print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
+        return
+
+    # ── 「リール作り直し:」コマンド ──
+    if content.startswith("リール作り直し:"):
+        print(f"\n[{now}] リール作り直しコマンド検出")
+        ok = trigger_workflow("runyan-generate.yml")
+        if ok:
+            print(f"  ✅ runyan-generate.yml 起動成功")
+            try:
+                update_last_command_id(str(message.id))
+            except Exception as e:
+                print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
+        else:
+            print(f"  ❌ runyan-generate.yml 起動失敗")
         return
 
     # ── ストーリーズ個別作り直しコマンド ──
