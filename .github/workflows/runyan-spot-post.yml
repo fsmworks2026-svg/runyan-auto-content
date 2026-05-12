@@ -1,0 +1,43 @@
+name: Runyan - スポット投稿（Instagram）
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'コンテンツ種別（feed / story）'
+        required: true
+        default: 'feed'
+
+permissions:
+  contents: write
+
+jobs:
+  spot-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Instagram に投稿
+        env:
+          INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
+          INSTAGRAM_PAGE_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_PAGE_ACCESS_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python main.py spot_post "${{ github.event.inputs.type }}"
+
+      - name: 投稿済み状態を保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          [ -f spot_pending.json ] && git add spot_pending.json || true
+          git diff --staged --quiet || (git commit -m "chore: スポット投稿完了" && git pull --rebase && git push)

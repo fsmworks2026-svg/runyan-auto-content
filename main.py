@@ -1141,6 +1141,196 @@ Output only the prompt, no explanation.""",
         print("=" * 55)
 
 
+    # ─────────────────────────────────────────
+    # スポット投稿（フィード / ストーリーズ）
+    # ─────────────────────────────────────────
+
+    def _generate_spot_scenario(self, content_type: str, description: str) -> dict:
+        """説明文から最小限のシナリオ辞書を GPT-4o で生成する"""
+        format_hint = "縦9:16のストーリーズ" if content_type == "story" else "フィード（スクエア〜縦長）"
+        response = self.openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": f"るーにゃ（21歳の日本人女性大学生）の{format_hint}投稿のシナリオを生成してください。"},
+                {"role": "user", "content": f"""説明: {description}
+
+以下のJSONのみを返してください:
+{{
+  "makeup_style": "gachi / natural / suppin のいずれか",
+  "photo_style": "selfie / mirror_living / mirror_washroom / friend_shot のいずれか",
+  "outfit": "服装の英語記述（例: soft pink oversized cardigan, white tee, light denim）",
+  "caption": "Instagramキャプション（日本語、ハッシュタグ含む、150字以内）",
+  "mood": "happy / thoughtful / excited / funny / relatable のいずれか"
+}}
+
+撮影スタイル選択ルール:
+- selfie: 一人（室内・屋外）インカメラ自撮り
+- mirror_living: 自宅リビング（姿見・コーデ確認）
+- mirror_washroom: 洗面所（スキンケア・メイク系）
+- friend_shot: 友達・複数人のシーン"""},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.7,
+        )
+        data = json.loads(response.choices[0].message.content)
+        return {
+            "setting":           description,
+            "scenario":          description,
+            "title":             description[:30],
+            "best_posting_time": "",
+            **data,
+        }
+
+    def _send_spot_discord(self, content_type: str, description: str, image_path: Path, caption: str) -> tuple:
+        """スポット確認画像を Discord に送信して (msg_id, channel_id) を返す"""
+        if not DISCORD_WEBHOOK_URL:
+            return None, None
+
+        bot_token  = os.getenv("DISCORD_BOT_TOKEN", "")
+        type_label = "📷 フィード" if content_type == "feed" else "📱 ストーリーズ"
+        caption_preview = (caption[:100] + "…") if len(caption) > 100 else caption
+        content_text = (
+            f"{type_label} **スポット投稿確認**\n"
+            f"**説明**: {description}\n"
+            f"**キャプション案**: {caption_preview}\n"
+            f"✅ で投稿 / ❌ でスキップ / **返信で作り直し**"
+        )
+        mime = "image/jpeg" if image_path.suffix.lower() == ".jpg" else "image/png"
+
+        try:
+            with open(image_path, "rb") as f:
+                res = requests.post(
+                    DISCORD_WEBHOOK_URL + "?wait=true",
+                    data={"content": content_text},
+                    files={"file": (image_path.name, f, mime)},
+                    timeout=30,
+                )
+            if res.status_code not in (200, 204):
+                print(f"  ❌ Discord 送信失敗: {res.status_code}")
+                return None, None
+
+            msg_data   = res.json()
+            msg_id     = msg_data.get("id")
+            channel_id = msg_data.get("channel_id")
+
+            # ✅/❌ リアクションをボットが追加
+            if msg_id and channel_id and bot_token:
+                headers = {"Authorization": f"Bot {bot_token}"}
+                for emoji in ["✅", "❌"]:
+                    requests.put(
+                        f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}"
+                        f"/reactions/{requests.utils.quote(emoji)}/@me",
+                        headers=headers, timeout=10,
+                    )
+            print(f"  ✅ Discord 送信完了（ID: {msg_id}）")
+            return msg_id, channel_id
+
+        except Exception as e:
+            print(f"  ❌ Discord 送信エラー: {e}")
+            return None, None
+
+    def run_spot_mode(self, content_type: str, description: str):
+        """スポット投稿：説明から画像を生成して Discord に確認を送る"""
+        type_label = "フィード" if content_type == "feed" else "ストーリーズ"
+        print(f"\n{'='*55}")
+        print(f"🎯 スポット{type_label}生成: {description[:50]}")
+        print(f"{'='*55}")
+
+        # 1. シナリオ情報を GPT-4o で生成
+        print("\n[1/3] シナリオ情報を生成中...")
+        scenario = self._generate_spot_scenario(content_type, description)
+        print(f"  スタイル: {scenario.get('photo_style')} / メイク: {scenario.get('makeup_style')}")
+
+        # 2. 画像生成（spot_output/ に直接出力）
+        print("\n[2/3] 画像生成中...")
+        spot_dir = Path("./spot_output")
+        spot_dir.mkdir(exist_ok=True)
+        original_output_dir = self.output_dir
+        self.output_dir = spot_dir
+        image_path_str = self.generate_image(scenario, shot_description=description)
+        self.output_dir = original_output_dir
+
+        if not image_path_str:
+            print("❌ 画像生成失敗")
+            return
+
+        # ファイル名を spot_{type}_{timestamp} に統一
+        src = Path(image_path_str)
+        ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dst = spot_dir / f"spot_{content_type}_{ts}{src.suffix}"
+        src.rename(dst)
+        print(f"  💾 保存: {dst}")
+
+        # 3. Discord に送信して spot_pending.json を保存
+        print("\n[3/3] Discord に送信中...")
+        caption = scenario.get("caption", "")
+        msg_id, channel_id = self._send_spot_discord(content_type, description, dst, caption)
+
+        pending = {
+            "type":               content_type,
+            "description":        description,
+            "image_path":         str(dst),
+            "discord_message_id": msg_id,
+            "discord_channel_id": channel_id,
+            "caption":            caption,
+            "status":             "pending",
+        }
+        Path("./spot_pending.json").write_text(
+            json.dumps(pending, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"\n{'='*55}")
+        print(f"✅ スポット生成完了 — Discord の ✅ で投稿 / 返信で作り直し")
+        print(f"{'='*55}")
+
+    def run_spot_post_mode(self, content_type: str):
+        """spot_pending.json の画像を Instagram に投稿する"""
+        import sys as _sys
+
+        pending_path = Path("./spot_pending.json")
+        if not pending_path.exists():
+            print("spot_pending.json なし。スキップ。")
+            return
+
+        pending = json.loads(pending_path.read_text(encoding="utf-8"))
+        if pending.get("status") != "pending":
+            print(f"ステータス: {pending.get('status')}。スキップ。")
+            return
+        if pending.get("type") != content_type:
+            print(f"タイプ不一致: {pending.get('type')} ≠ {content_type}")
+            return
+
+        image_path = Path(pending["image_path"])
+        caption    = pending.get("caption", "")
+        ig_user_id = os.environ["INSTAGRAM_BUSINESS_ACCOUNT_ID"]
+        page_token = os.environ["INSTAGRAM_PAGE_ACCESS_TOKEN"]
+        webhook    = os.environ.get("DISCORD_WEBHOOK_URL", "")
+        type_label = "フィード" if content_type == "feed" else "ストーリーズ"
+
+        try:
+            if content_type == "feed":
+                from feed_poster import post_feed_image
+                post_id = post_feed_image(image_path, caption, ig_user_id, page_token)
+            else:
+                GH_RAW     = "https://raw.githubusercontent.com/fsmworks2026-svg/runyan-auto-content/master"
+                public_url = f"{GH_RAW}/spot_output/{image_path.name}"
+                from stories_poster import post_story_image
+                post_id = post_story_image(image_path, ig_user_id, page_token, public_url=public_url)
+
+            pending["status"]  = "approved"
+            pending["post_id"] = post_id
+            pending_path.write_text(json.dumps(pending, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"✅ スポット{type_label}投稿完了: {post_id}")
+
+            if webhook:
+                requests.post(webhook, json={"content": f"✅ スポット{type_label}投稿完了: {post_id}"})
+
+        except Exception as e:
+            print(f"❌ スポット投稿エラー: {e}")
+            if webhook:
+                requests.post(webhook, json={"content": f"❌ スポット{type_label}投稿失敗: {e}"})
+            _sys.exit(1)
+
+
 if __name__ == "__main__":
     import sys
     mode = sys.argv[1] if len(sys.argv) > 1 else "scenario"
@@ -1149,5 +1339,12 @@ if __name__ == "__main__":
         generator.run_generate_mode()
     elif mode == "briefing":
         generator.run_briefing_mode()
+    elif mode == "spot":
+        content_type = sys.argv[2] if len(sys.argv) > 2 else "feed"
+        description  = sys.argv[3] if len(sys.argv) > 3 else ""
+        generator.run_spot_mode(content_type, description)
+    elif mode == "spot_post":
+        content_type = sys.argv[2] if len(sys.argv) > 2 else "feed"
+        generator.run_spot_post_mode(content_type)
     else:
         generator.run_scenario_mode()

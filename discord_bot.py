@@ -218,6 +218,35 @@ def set_regenerating():
     print("  current_scenario.json → regenerating")
 
 
+def get_spot_pending() -> dict | None:
+    """spot_pending.json の内容を GitHub から取得する。status が pending でなければ None"""
+    data, _ = get_github_file("spot_pending.json")
+    if not data:
+        return None
+    if data.get("status") != "pending":
+        return None
+    return data
+
+
+def get_spot_pending_message_id() -> str | None:
+    """spot_pending.json から pending 中のメッセージIDを返す"""
+    data = get_spot_pending()
+    return str(data["discord_message_id"]) if data else None
+
+
+def set_spot_pending_status(status: str):
+    """spot_pending.json の status を更新する"""
+    data, sha = get_github_file("spot_pending.json")
+    if not data:
+        return
+    data["status"] = status
+    put_github_file(
+        "spot_pending.json", data, sha,
+        f"chore: スポット投稿ステータスを {status} に更新（ローカルBot）",
+    )
+    print(f"  spot_pending.json → status = {status}")
+
+
 def update_last_command_id(message_id: str):
     """
     新規: コマンド処理後に last_command_id.json を更新する。
@@ -278,6 +307,23 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
             label    = "承認" if approved else "却下"
             print(f"\n[{now}] ストーリーズ {slot_id} スロット {label} (ID: {message_id})")
             update_story_slot_approval(slot_id, approved)
+            return
+
+    # ── スポット投稿確認メッセージへのリアクション ──
+    if emoji in ("✅", "❌"):
+        spot_msg_id = get_spot_pending_message_id()
+        if spot_msg_id and message_id == spot_msg_id:
+            pending = get_spot_pending()
+            if pending:
+                spot_type  = pending.get("type", "feed")
+                type_label = "フィード" if spot_type == "feed" else "ストーリーズ"
+                if emoji == "✅":
+                    print(f"\n[{now}] スポット{type_label} ✅ → Instagram に投稿します")
+                    ok = trigger_workflow("runyan-spot-post.yml", {"type": spot_type})
+                    print(f"  runyan-spot-post.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+                else:
+                    print(f"\n[{now}] スポット{type_label} ❌ → スキップ")
+                    set_spot_pending_status("rejected")
 
 
 @client.event
@@ -347,6 +393,24 @@ async def on_message(message: discord.Message):
             print(f"  ❌ runyan-generate.yml 起動失敗")
         return
 
+    # ── スポット投稿コマンド（フィード: / ストーリーズ:）──
+    SPOT_TYPES = {"フィード": "feed", "ストーリーズ": "story"}
+    for prefix, spot_type in SPOT_TYPES.items():
+        if content.startswith(prefix + ":"):
+            desc = content[len(prefix) + 1:].strip()
+            print(f"\n[{now}] スポット{prefix}コマンド検出: {desc[:40]}")
+            ok = trigger_workflow(
+                "runyan-spot-generate.yml",
+                {"type": spot_type, "description": desc},
+            )
+            print(f"  runyan-spot-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+            if ok:
+                try:
+                    update_last_command_id(str(message.id))
+                except Exception as e:
+                    print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
+            return
+
     # ── ストーリーズ個別作り直しコマンド ──
     # 書式: 「朝作り直し: [指示]」「昼作り直し: [指示]」「夕方作り直し: [指示]」「夜作り直し: [指示]」
     STORY_REDO = {"朝作り直し": "morning", "昼作り直し": "afternoon", "夕方作り直し": "evening", "夜作り直し": "night"}
@@ -360,6 +424,22 @@ async def on_message(message: discord.Message):
             )
             print(f"  runyan-redo-story.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
             return
+
+    # ── スポット確認メッセージへの返信（作り直し）──
+    spot_msg_id = get_spot_pending_message_id()
+    if spot_msg_id and message.reference and str(message.reference.message_id) == spot_msg_id:
+        pending = get_spot_pending()
+        if pending:
+            spot_type  = pending.get("type", "feed")
+            type_label = "フィード" if spot_type == "feed" else "ストーリーズ"
+            print(f"\n[{now}] スポット{type_label}作り直し指示: {content[:40]}")
+            set_spot_pending_status("regenerating")
+            ok = trigger_workflow(
+                "runyan-spot-generate.yml",
+                {"type": spot_type, "description": content},
+            )
+            print(f"  runyan-spot-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+        return
 
     # ── 「修正:」コマンド または ブリーフィングへの返信 ──
     briefing_id = get_briefing_message_id()

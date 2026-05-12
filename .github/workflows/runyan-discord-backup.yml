@@ -349,6 +349,77 @@ jobs:
                   print("ストーリーズスロット: 新しいリアクションなし")
           else:
               print("story_message_ids.json / approved_slots.json なし。スキップ。")
+
+          # ══════════════════════════════════════════════════════════════════
+          # Part 4: スポット投稿確認チェック（✅ / ❌ / 返信）
+          # spot_pending.json の Discord メッセージに対してリアクション・返信を確認
+          # ══════════════════════════════════════════════════════════════════
+          spot_path = Path("spot_pending.json")
+          if spot_path.exists():
+              spot = json.loads(spot_path.read_text(encoding="utf-8"))
+              if spot.get("status") == "pending":
+                  spot_msg_id    = spot.get("discord_message_id")
+                  spot_ch_id     = spot.get("discord_channel_id") or os.getenv("DISCORD_SCENARIO_CHANNEL_ID")
+                  spot_type      = spot.get("type", "feed")
+                  spot_updated   = False
+
+                  if spot_msg_id and spot_ch_id:
+                      # ✅ チェック
+                      ok_res = requests.get(
+                          f"https://discord.com/api/v10/channels/{spot_ch_id}/messages/{spot_msg_id}/reactions/%E2%9C%85",
+                          headers=HEADERS,
+                      )
+                      if ok_res.status_code == 200:
+                          reactors = [u for u in ok_res.json() if not u.get("bot")]
+                          if reactors:
+                              print(f"  ✅ スポット{spot_type} 承認 → Instagram 投稿を起動")
+                              ok = trigger_workflow("runyan-spot-post.yml", {"type": spot_type})
+                              if ok:
+                                  spot["status"] = "approved"
+                                  spot_updated = True
+
+                      if not spot_updated:
+                          # ❌ チェック
+                          ng_res = requests.get(
+                              f"https://discord.com/api/v10/channels/{spot_ch_id}/messages/{spot_msg_id}/reactions/%E2%9D%8C",
+                              headers=HEADERS,
+                          )
+                          if ng_res.status_code == 200:
+                              ng_users = [u for u in ng_res.json() if not u.get("bot")]
+                              if ng_users:
+                                  print(f"  ❌ スポット{spot_type} 却下")
+                                  spot["status"] = "rejected"
+                                  spot_updated = True
+
+                      if not spot_updated:
+                          # 返信（作り直し）チェック
+                          msgs_res = requests.get(
+                              f"https://discord.com/api/v10/channels/{spot_ch_id}/messages?after={spot_msg_id}&limit=10",
+                              headers=HEADERS,
+                          )
+                          if msgs_res.status_code == 200:
+                              for msg in reversed(msgs_res.json()):
+                                  if msg.get("author", {}).get("bot"):
+                                      continue
+                                  ref = msg.get("message_reference", {})
+                                  if ref.get("message_id") == spot_msg_id:
+                                      new_desc = msg.get("content", "").strip()
+                                      print(f"  作り直し指示: {new_desc[:40]}")
+                                      ok = trigger_workflow(
+                                          "runyan-spot-generate.yml",
+                                          {"type": spot_type, "description": new_desc},
+                                      )
+                                      if ok:
+                                          spot["status"] = "regenerating"
+                                          spot_updated = True
+                                      break
+
+                  if spot_updated:
+                      spot_path.write_text(json.dumps(spot, ensure_ascii=False, indent=2), encoding="utf-8")
+              else:
+                  print(f"スポット投稿ステータス: {spot.get('status')}。スキップ。")
+          else:
+              print("spot_pending.json なし。スキップ。")
           EOF
 
       - name: 変更ファイルを保存
@@ -359,4 +430,5 @@ jobs:
           [ -f approved_dates.json ] && git add approved_dates.json || true
           [ -f approved_slots.json ] && git add approved_slots.json || true
           [ -f story_message_ids.json ] && git add story_message_ids.json || true
+          [ -f spot_pending.json ] && git add spot_pending.json || true
           git diff --staged --quiet || (git commit -m "chore: Discordバックアップポーリング結果を更新" && git pull --rebase && git push)

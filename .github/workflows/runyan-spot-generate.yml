@@ -1,0 +1,51 @@
+name: Runyan - スポット投稿生成
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'コンテンツ種別（feed / story）'
+        required: true
+        default: 'feed'
+      description:
+        description: 'シーンの説明（日本語）'
+        required: true
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  spot-generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: スポット画像を生成して Discord に送信
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          CHARACTER_NAME: るーにゃ
+          CHARACTER_AGE: 21
+          CHARACTER_BIRTHDAY: 12月20日
+        run: |
+          python main.py spot "${{ github.event.inputs.type }}" "${{ github.event.inputs.description }}"
+
+      - name: 生成ファイルをリポジトリに保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add spot_output/ || true
+          [ -f spot_pending.json ] && git add spot_pending.json || true
+          git diff --staged --quiet || (git commit -m "chore: スポット投稿画像を生成" && git pull --rebase && git push)
