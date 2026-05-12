@@ -163,6 +163,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
     # パジャマスロットは日本語プロンプトで統一（背景を先に指定してアンカーにする）
     if outfit_type == "pajamas":
+        time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかりの雰囲気、自然な朝の光"
         prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
 
 この部屋に、1枚目の写真と同じ人物を配置してください。
@@ -170,7 +171,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 ダークブラウンのセミロングヘア、ゆるいウェーブ、薄いエアリーな前髪。
 
 完全にすっぴん。化粧は一切なし。リップカラーなし・眉毛メイクなし・アイメイクなし。素肌そのまま。
-{outfit}を着ている。
+{outfit}を着ている。{time_context}。
 
 その子がベッドに座り、スマホのインカメラで自撮りをしている。
 顔はすっぴんなので、鼻の上から目の下にかけて可愛い星のスタンプを貼っており、目元が少し透けて見える。
