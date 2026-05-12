@@ -56,7 +56,16 @@ def _build_outfit_text(slot: dict, ctx: dict) -> str:
         return ctx["pajamas"]
     if ot == "room":
         return ctx["room_wear"]
-    return ctx["casual_outfit"]  # casual
+    # casual: リール画像と衣装を一致させるため current_scenario.json の outfit を優先する
+    scenario_path = Path("./current_scenario.json")
+    if scenario_path.exists():
+        try:
+            sc = json.loads(scenario_path.read_text(encoding="utf-8"))
+            if sc.get("outfit"):
+                return sc["outfit"]
+        except Exception:
+            pass
+    return ctx["casual_outfit"]
 
 
 def _build_room_description(ctx: dict) -> str:
