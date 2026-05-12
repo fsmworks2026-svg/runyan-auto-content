@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys, io
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ('utf-8', 'utf8'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 """
 Discordリアクション・コマンドをリアルタイムで検知してGitHub Actionsを起動するローカルBot。
 PC起動中に常駐させ、承認/スキップ/修正/新規作成を即時処理する。
