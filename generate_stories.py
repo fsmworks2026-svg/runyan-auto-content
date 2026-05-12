@@ -150,41 +150,13 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
             conceal_text = ""  # 部屋着＋メイクあり → 顔隠し不要
 
     else:
-        # パジャマ（朝・夜の寝室）
-        if is_night:
-            room_text = (
-                "\nRoom setting: Japanese apartment bedroom at night. "
-                "Window with sheer lace curtains on the left. "
-                "Wooden desk and chair on the left side, small white table lamp on the desk glowing warm amber — main light source. "
-                "Flower vase and closed laptop on the desk. "
-                "Single bed with white bedding and orange fluffy blanket on the right side. Wooden headboard. "
-                "Small nightstand beside the bed. Wooden bookshelf to the right of the bed with books. "
-                "Round fluffy rug on the floor. Air conditioner on the upper wall. "
-                "Small photo prints on the right wall. Entire room bathed in warm amber lamplight.\n"
-            )
-        else:
-            room_text = (
-                "\nRoom setting: Japanese apartment bedroom in the morning. "
-                "Window with sheer lace curtains on the left, bright natural morning sunlight flooding in. "
-                "Wooden desk and chair on the left, laptop and flower vase on the desk. Small white table lamp on the desk. "
-                "Single bed with white bedding and salmon-pink fluffy blanket on the right side. Wooden headboard. "
-                "Small wooden nightstand beside the bed with a tiny stuffed cat and flowers. "
-                "Small wooden bookshelf/cabinet between the desk area and the bed. "
-                "Round fluffy rug on the floor. Air conditioner on the upper wall. "
-                "Small photo prints on the right wall. Airy bright morning atmosphere.\n"
-            )
+        # パジャマ（朝・夜の寝室）- シンプルな指示で参照画像に任せる
+        room_text    = ""
         room_style   = "mirror"  # pajamas では未使用
-        # 入口付近に立って外向きにセルフィー → bedroom_entrance 参照画像のアングルと一致する
-        camera_text  = (
-            "\nSelfie taken while standing at the bedroom doorway, facing outward. "
-            "Phone held at arm's length, front camera angled slightly downward. "
-            "The bedroom interior — bed, pillow, shelves — visible behind the character. "
-            "Casual relaxed pose, natural Instagram selfie framing.\n"
-        )
+        camera_text  = "\nWearing pajamas. Taking a mirror selfie with smartphone in the bedroom.\n"
         conceal_text = (
-            "\nFace concealment: A cute pastel pink star-shaped sticker is placed "
-            "over the eyes area in the photo, covering from the eyebrows to the nose bridge. "
-            "Like an Instagram story decoration. The rest of the face (lips, chin) is visible.\n"
+            "\nFace has cute small star-shaped stickers placed over the eyes area, "
+            "like an Instagram story decoration. No makeup, bare natural skin.\n"
         )
 
     # 部屋参照画像がある場合、プロンプトに役割を明示する
