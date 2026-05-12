@@ -153,16 +153,8 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         # パジャマ（朝・夜の寝室）- シンプルな指示で参照画像に任せる
         room_text    = ""
         room_style   = "mirror"  # pajamas では未使用
-        camera_text  = (
-            "\nWearing pajamas. Natural mirror selfie, upper body framing. "
-            "Phone held up at chest height to photograph her reflection in the mirror. Slight casual tilt. "
-            "Mirror frame visible at the edges of the photo — the entire shot is the mirror reflection. "
-            "Warm amber lamplight softly illuminating her face and body, matching the room's cozy lighting.\n"
-        )
-        conceal_text = (
-            "\nFace has cute small star-shaped stickers placed over the eyes area, "
-            "like an Instagram story decoration. No makeup, bare natural skin.\n"
-        )
+        camera_text  = "\n添付した写真の子は寝間着でベッドに座り、スマホのインカメラで自撮りをしている。\n"
+        conceal_text = "\n顔はすっぴんなので、可愛い星のスタンプで目元を少し隠している。\n"
 
     # 部屋参照画像がある場合、プロンプトに役割を明示する
     room_image_path = _select_room_image(slot, room_style=room_style)
