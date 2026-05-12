@@ -32,7 +32,8 @@ def gh_request(url, pat, method="GET", data=None):
     req  = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req) as res:
-            return res.status, json.loads(res.read())
+            body = res.read()
+            return res.status, json.loads(body) if body else {}
     except urllib.error.HTTPError as e:
         return e.code, {}
 
