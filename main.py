@@ -648,8 +648,18 @@ Mood: {scenario.get('mood', 'casual')}
         # IS_SPOT_REEL=true の場合はスポット投稿フラグを付与（"新規:" コマンド経由）
         scenario["is_spot"] = os.getenv("IS_SPOT_REEL", "false").lower() == "true"
 
-        # シナリオをファイルに保存（次のステップで使用）
+        # 既存シナリオの outfit / has_reel / has_feed を引き継ぐ
+        # （修正フロー: ストーリーズ画像は再生成せずリールのみ作り直す。
+        #   daily_context の casual_outfit と一致させておく）
         scenario_path = Path("./current_scenario.json")
+        if scenario_path.exists():
+            try:
+                prev = json.load(open(scenario_path, encoding="utf-8"))
+                for key in ("outfit", "has_reel", "has_feed", "feed_type", "briefing_date"):
+                    if key in prev:
+                        scenario.setdefault(key, prev[key])
+            except Exception:
+                pass
         with open(scenario_path, "w", encoding="utf-8") as f:
             json.dump(scenario, f, ensure_ascii=False, indent=2)
         print(f"✅ シナリオ保存: {scenario_path}")
@@ -927,48 +937,95 @@ Output only the prompt, no explanation.""",
         return message_id
 
     def _send_story_images_discord(self, story_images: list, ctx: dict):
-        """ストーリーズ画像4枚を Discord に別メッセージで一括送信する"""
+        """ストーリーズ画像をスロット別に個別 Discord メッセージで送信し、
+        メッセージIDを story_message_ids.json・承認初期状態を approved_slots.json に保存する。
+        """
         if not DISCORD_WEBHOOK_URL or not story_images:
             return
 
-        slot_map = {s["id"]: s for s in ctx.get("story_slots", [])}
-        files    = {}
-        opened   = []
+        bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+        slot_map  = {s["id"]: s for s in ctx.get("story_slots", [])}
+        date_str  = ctx["date"]
 
-        try:
-            for i, path in enumerate(story_images):
-                p = Path(str(path))
-                if not p.exists():
-                    continue
-                f    = open(p, "rb")
-                opened.append(f)
-                mime = "image/jpeg" if p.suffix.lower() == ".jpg" else "image/png"
-                files[f"files[{i}]"] = (p.name, f, mime)
+        message_ids    = {}  # slot_id -> discord message_id
+        approved_slots = {}  # slot_id -> None (pending)
+        channel_id_ref = None
 
-            if not files:
-                print("  ⚠️  送信できるストーリーズ画像がありません")
-                return
+        for path in story_images:
+            p = Path(str(path))
+            if not p.exists():
+                continue
 
-            # スロット情報をコンテンツに組み立て
-            lines = ["📱 **ストーリーズ画像確認**"]
-            for slot in ctx.get("story_slots", []):
-                pw = slot["post_window"]
-                lines.append(f"{slot['emoji']} {slot['label']}  {pw[0]}〜{pw[1]}時")
+            # ファイル名 story_YYYYMMDD_{slot_id}.jpg からスロットIDを取得
+            parts = p.stem.split("_", 2)
+            if len(parts) < 3:
+                continue
+            slot_id = parts[2]
+            slot = slot_map.get(slot_id)
+            if not slot:
+                continue
 
-            res = requests.post(
-                DISCORD_WEBHOOK_URL,
-                data={"content": "\n".join(lines)},
-                files=files,
+            pw      = slot["post_window"]
+            content = (
+                f"{slot['emoji']} **{slot['label']}ストーリーズ確認**"
+                f"（{pw[0]}〜{pw[1]}時）\n{slot.get('scene_hint', '')}"
             )
-            if res.status_code in (200, 204):
-                print(f"  ✅ ストーリーズ画像 {len(files)} 枚を Discord に送信しました")
-            else:
-                print(f"  ❌ ストーリーズ画像送信失敗: {res.status_code}")
-        except Exception as e:
-            print(f"  ❌ ストーリーズ画像送信エラー: {e}")
-        finally:
-            for f in opened:
-                f.close()
+            mime = "image/jpeg" if p.suffix.lower() == ".jpg" else "image/png"
+
+            try:
+                with open(p, "rb") as f:
+                    res = requests.post(
+                        DISCORD_WEBHOOK_URL + "?wait=true",
+                        data={"content": content},
+                        files={"file": (p.name, f, mime)},
+                        timeout=30,
+                    )
+            except Exception as e:
+                print(f"  ❌ {slot_id} 送信エラー: {e}")
+                continue
+
+            if res.status_code not in (200, 204):
+                print(f"  ❌ {slot_id} 送信失敗: {res.status_code}")
+                continue
+
+            msg_data   = res.json()
+            msg_id     = msg_data.get("id")
+            channel_id = msg_data.get("channel_id")
+            if channel_id:
+                channel_id_ref = channel_id
+            print(f"  ✅ {slot['emoji']} {slot['label']} 送信完了（ID: {msg_id}）")
+
+            message_ids[slot_id]    = msg_id
+            approved_slots[slot_id] = None  # None = 承認待ち
+
+            # ✅/❌ リアクションを追加（ユーザーが押しやすくするため）
+            if msg_id and channel_id and bot_token:
+                headers = {"Authorization": f"Bot {bot_token}"}
+                for emoji in ["✅", "❌"]:
+                    requests.put(
+                        f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}"
+                        f"/reactions/{requests.utils.quote(emoji)}/@me",
+                        headers=headers,
+                        timeout=10,
+                    )
+
+        if not message_ids:
+            print("  ⚠️  送信できるストーリーズ画像がありませんでした")
+            return
+
+        # story_message_ids.json にメッセージIDを保存（チャンネルIDも記録）
+        ids_path = Path("./story_message_ids.json")
+        existing_ids = json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else {}
+        existing_ids[date_str] = {"channel_id": channel_id_ref, **message_ids}
+        ids_path.write_text(json.dumps(existing_ids, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        # approved_slots.json に承認状態を初期化（null = 未承認）
+        slots_path = Path("./approved_slots.json")
+        existing_slots = json.loads(slots_path.read_text(encoding="utf-8")) if slots_path.exists() else {}
+        existing_slots[date_str] = approved_slots
+        slots_path.write_text(json.dumps(existing_slots, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        print(f"  📋 {len(message_ids)} スロットのメッセージIDを story_message_ids.json に保存")
 
     def _notify_video_upload_request(self, ctx: dict, scenario: dict):
         """#video-uploads チャンネルに動画アップロード依頼を Bot として送信"""
