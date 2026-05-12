@@ -6,9 +6,9 @@
     "night": true
   },
   "20260513": {
-    "morning": null,
-    "afternoon": null,
-    "evening": null,
+    "morning": true,
+    "afternoon": true,
+    "evening": true,
     "night": null
   }
 }
