@@ -217,6 +217,11 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
                 if room_style == "mirror" else
                 "ソファに座ってスマホのインカメラで自撮りをしている。腕を少し伸ばして。リラックスしたカジュアルなポーズ。"
             )
+            room_lighting = (
+                "部屋全体に暖かいアンバー色の間接照明とキャンドルの光が灯っている。人物にも同じ暖色系の柔らかい光を当てること。顔や肌に暖かいオレンジがかった光が反射している。"
+                if is_night else
+                "明るく柔らかい自然光が差し込んでいる。人物にも同じ色温度の光を当てること。"
+            )
             prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
 
 この部屋に、1枚目の写真と同じ人物を配置してください。
@@ -230,6 +235,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 季節：{ctx['season_jp']} — {ctx['season_weather']}
 
 {room_camera}
+{room_lighting}
 フォトリアリスティック。縦9:16。Instagramストーリーズ。"""
 
     if outfit_type == "pajamas":
