@@ -381,16 +381,17 @@ async def on_message(message: discord.Message):
 
     # ── 「リール作り直し:」コマンド ──
     if content.startswith("リール作り直し:"):
-        print(f"\n[{now}] リール作り直しコマンド検出")
-        ok = trigger_workflow("runyan-generate.yml")
+        hint = content[len("リール作り直し:"):].strip()
+        print(f"\n[{now}] リール作り直しコマンド検出" + (f": {hint}" if hint else ""))
+        ok = trigger_workflow("runyan-redo-reel.yml", {"override_hint": hint, "target_date": ""})
         if ok:
-            print(f"  ✅ runyan-generate.yml 起動成功")
+            print(f"  ✅ runyan-redo-reel.yml 起動成功")
             try:
                 update_last_command_id(str(message.id))
             except Exception as e:
                 print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
         else:
-            print(f"  ❌ runyan-generate.yml 起動失敗")
+            print(f"  ❌ runyan-redo-reel.yml 起動失敗")
         return
 
     # ── スポット投稿コマンド（フィード: / ストーリーズ:）──

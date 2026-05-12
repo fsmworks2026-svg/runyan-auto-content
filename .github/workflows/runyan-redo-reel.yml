@@ -1,0 +1,56 @@
+name: Runyan - リール画像再生成
+
+# リール画像だけ作り直す。
+# 「作り直し指示（override_hint）」があればシーン設定を上書きして再生成。
+
+on:
+  workflow_dispatch:
+    inputs:
+      override_hint:
+        description: 'シーン変更指示（例: park bench, sunny afternoon）空欄でデフォルト'
+        required: false
+        default: ''
+      target_date:
+        description: '対象日付（YYYY-MM-DD、空欄で今日）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  redo-reel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: リール画像を再生成してDiscordに送信
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          CHARACTER_NAME: るーにゃ
+          CHARACTER_AGE: 21
+          CHARACTER_BIRTHDAY: 12月20日
+        run: |
+          python main.py redo_reel "${{ github.event.inputs.override_hint }}" "${{ github.event.inputs.target_date }}"
+
+      - name: 生成ファイルをリポジトリに保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reel_output/ || true
+          git add reel_message_ids.json || true
+          git diff --staged --quiet || (git commit -m "chore: リール画像再生成" && git pull --rebase && git push)

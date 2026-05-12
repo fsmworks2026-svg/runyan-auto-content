@@ -57,4 +57,6 @@ jobs:
           [ -f theme_history.json ] && git add theme_history.json || true
           [ -f story_message_ids.json ] && git add story_message_ids.json || true
           [ -f approved_slots.json ] && git add approved_slots.json || true
+          git add reel_output/ || true
+          [ -f reel_message_ids.json ] && git add reel_message_ids.json || true
           git diff --staged --quiet || (git commit -m "chore: ブリーフィングを生成" && git pull --rebase && git push)

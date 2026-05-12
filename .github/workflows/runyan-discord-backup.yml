@@ -252,14 +252,15 @@ jobs:
 
               # ── 「リール作り直し:」コマンド ──
               if content.startswith("リール作り直し:"):
-                  print(f"リール作り直しコマンドを検出")
-                  gh_res = trigger_workflow("runyan-generate.yml")
+                  hint = content[len("リール作り直し:"):].strip()
+                  print(f"リール作り直しコマンドを検出" + (f": {hint}" if hint else ""))
+                  gh_res = trigger_workflow("runyan-redo-reel.yml", {"override_hint": hint, "target_date": ""})
                   if gh_res:
-                      print(f"✅ runyan-generate.yml を起動しました")
+                      print(f"✅ runyan-redo-reel.yml を起動しました")
                       state["last_id"] = msg["id"]
                       state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
                   else:
-                      print(f"❌ runyan-generate.yml 起動失敗")
+                      print(f"❌ runyan-redo-reel.yml 起動失敗")
                       sys.exit(1)
                   break
 

@@ -16,25 +16,25 @@ from datetime import datetime, timezone, timedelta
 JST = timezone(timedelta(hours=9))
 
 
-def post_story_image(image_path: Path, ig_user_id: str, page_token: str) -> str:
+def post_story_image(image_path: Path, ig_user_id: str, page_token: str, public_url: str = "") -> str:
     """
     Instagram Graph API で Stories に画像を投稿する。
-    resumable upload は動画専用のため、画像は source パラメータで直接アップロードする。
+    Stories 画像は image_url（公開URL）が必須仕様のため、GitHub raw content URL を使用する。
     """
-    content_type = "image/jpeg" if image_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
+    if not public_url:
+        raise Exception("Stories 画像投稿には公開 URL（image_url）が必要です")
 
-    # 1. コンテナ作成（source = multipart form-data で直接バイナリ送信）
+    # 1. コンテナ作成（image_url で公開URL を渡す）
     print("  📤 Storiesコンテナ作成...")
-    with open(image_path, "rb") as f:
-        res = requests.post(
-            f"https://graph.facebook.com/v25.0/{ig_user_id}/media",
-            data={
-                "media_type":   "STORIES",
-                "access_token": page_token,
-            },
-            files={"source": (image_path.name, f, content_type)},
-            timeout=120,
-        )
+    res = requests.post(
+        f"https://graph.facebook.com/v25.0/{ig_user_id}/media",
+        params={
+            "media_type":   "STORIES",
+            "image_url":    public_url,
+            "access_token": page_token,
+        },
+        timeout=30,
+    )
     if res.status_code != 200:
         raise Exception(f"コンテナ作成失敗: {res.status_code} {res.text}")
 
@@ -153,8 +153,13 @@ def check_and_post_story():
             requests.post(webhook_url, json={"content": f"❌ {msg}"})
         sys.exit(1)
 
+    # GitHub raw content URL（リポジトリが public なので公開アクセス可能）
+    GH_RAW_BASE = "https://raw.githubusercontent.com/fsmworks2026-svg/runyan-auto-content/master"
+    public_url  = f"{GH_RAW_BASE}/stories_output/{image_path.name}"
+    print(f"  🔗 image_url: {public_url}")
+
     try:
-        post_id = post_story_image(image_path, ig_user_id, page_token)
+        post_id = post_story_image(image_path, ig_user_id, page_token, public_url=public_url)
 
         # 投稿済みを記録
         posted_today.append(slot_to_post["id"])

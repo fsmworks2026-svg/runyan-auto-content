@@ -811,9 +811,25 @@ Output only the prompt, no explanation.""",
                     })
                 return
 
-        # メインショットを生成
-        main_shot = scenario.get("main_shot", scenario.get("shots", [""])[0] if scenario.get("shots") else "")
-        image_path = self.generate_image(scenario, shot_description=main_shot, shot_index=0)
+        # ブリーフィング時に生成済みのリール画像があればスキップ、なければ生成
+        from datetime import timezone as _tz2, timedelta as _td2
+        _jst2    = _tz2(_td2(hours=9))
+        _today2  = datetime.now(_jst2).strftime("%Y%m%d")
+        reel_dir = Path("./reel_output")
+        image_path = None
+        for suffix in (".jpg", ".png"):
+            candidate = reel_dir / f"reel_{_today2}{suffix}"
+            if candidate.exists():
+                image_path = str(candidate)
+                print(f"✅ ブリーフィング生成済みリール画像を使用: {candidate.name}")
+                break
+
+        if not image_path:
+            print("ブリーフィング生成画像なし → 新規生成")
+            main_shot  = scenario.get("main_shot", scenario.get("shots", [""])[0] if scenario.get("shots") else "")
+            reel_image = self._generate_reel_image(scenario, _today2)
+            image_path = str(reel_image) if reel_image else None
+
         if not image_path:
             print("❌ 画像生成が失敗しました")
             return
@@ -945,6 +961,80 @@ Output only the prompt, no explanation.""",
             print("  👍 ✅/❌ リアクション追加完了")
 
         return message_id
+
+    def _generate_reel_image(self, scenario: dict, date_str: str) -> Path | None:
+        """リール用画像を reel_output/ に生成して保存する。既存ファイルがあればスキップ。"""
+        reel_dir = Path("./reel_output")
+        reel_dir.mkdir(exist_ok=True)
+
+        for suffix in (".jpg", ".png"):
+            existing = reel_dir / f"reel_{date_str}{suffix}"
+            if existing.exists():
+                print(f"  ✅ 既存リール画像: {existing.name}")
+                return existing
+
+        original_dir = self.output_dir
+        self.output_dir = reel_dir
+        main_shot = scenario.get("main_shot", scenario.get("setting", ""))
+        image_path_str = self.generate_image(scenario, shot_description=main_shot)
+        self.output_dir = original_dir
+
+        if not image_path_str:
+            return None
+
+        src = Path(image_path_str)
+        dst = reel_dir / f"reel_{date_str}{src.suffix}"
+        src.rename(dst)
+        print(f"  💾 リール画像保存: {dst.name}")
+        return dst
+
+    def _send_reel_image_discord(self, image_path: Path, date_str: str, ctx: dict, scenario: dict, video_prompt: str = ""):
+        """リール画像を Discord に送信して reel_message_ids.json に保存する"""
+        if not DISCORD_WEBHOOK_URL:
+            return
+
+        bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+        pw = ctx.get("reel_post_window", [])
+        pw_str = f"{pw[0]}〜{pw[1]}時" if len(pw) == 2 else "未定"
+
+        lines = [
+            f"🎬 **リール画像確認**（投稿予定: {pw_str}）",
+            f"シーン: {scenario.get('setting', '')}",
+            "作り直す場合は `リール作り直し: [指示]` と入力してください",
+        ]
+        if video_prompt:
+            prompt_preview = video_prompt[:400] + ("…" if len(video_prompt) > 400 else "")
+            lines += ["", "📹 **動画プロンプト（ElevenLabs/Kling）**", f"```\n{prompt_preview}\n```"]
+
+        mime = "image/jpeg" if image_path.suffix.lower() == ".jpg" else "image/png"
+        try:
+            with open(image_path, "rb") as f:
+                res = requests.post(
+                    DISCORD_WEBHOOK_URL + "?wait=true",
+                    data={"content": "\n".join(lines)},
+                    files={"file": (image_path.name, f, mime)},
+                    timeout=30,
+                )
+            if res.status_code not in (200, 204):
+                print(f"  ❌ リール画像送信失敗: {res.status_code}")
+                return
+
+            msg_data   = res.json()
+            msg_id     = msg_data.get("id")
+            channel_id = msg_data.get("channel_id")
+            print(f"  ✅ リール画像送信完了（ID: {msg_id}）")
+
+            ids_path = Path("./reel_message_ids.json")
+            existing = json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else {}
+            existing[date_str] = {
+                "message_id": msg_id,
+                "channel_id": channel_id,
+                "image_path": str(image_path),
+            }
+            ids_path.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        except Exception as e:
+            print(f"  ❌ リール画像送信エラー: {e}")
 
     def _send_story_images_discord(self, story_images: list, ctx: dict):
         """ストーリーズ画像をスロット別に個別 Discord メッセージで送信し、
@@ -1114,7 +1204,7 @@ Output only the prompt, no explanation.""",
         print(f"  ✅ シナリオ: {scenario.get('title')}")
 
         # 3. ストーリーズ画像生成（Discord への個別送信はスキップ）
-        print("\n[3/3] ストーリーズ画像生成")
+        print("\n[3/4] ストーリーズ画像生成")
         story_images = gs.generate_all(target_date=tomorrow, notify_discord=False)
 
         # フィード画像生成（food タイプの場合のみブリーフィング時に生成）
@@ -1130,20 +1220,44 @@ Output only the prompt, no explanation.""",
         elif ctx.get("has_feed") and ctx.get("feed_type") == "person":
             print("\n[フィード] person タイプ — リール画像を後で流用（今は生成不要）")
 
-        # 4. ブリーフィングを Discord に一括送信してメッセージIDを保存
+        # 4. リール画像生成（リールがある日のみ）
+        reel_image_path = None
+        reel_video_prompt = ""
+        if ctx.get("has_reel"):
+            print("\n[4/4] リール画像生成")
+            reel_image_path = self._generate_reel_image(scenario, ctx["date"])
+            if reel_image_path:
+                print("  📝 動画プロンプト生成中...")
+                try:
+                    reel_video_prompt = self.generate_video_prompt(scenario)
+                except Exception as e:
+                    print(f"  ⚠️ 動画プロンプト生成失敗: {e}")
+                    reel_video_prompt = f"{scenario.get('setting')} scene, natural movement, 9:16 vertical"
+                scenario["reel_image_path"] = str(reel_image_path)
+                with open(scenario_path, "w", encoding="utf-8") as f:
+                    json.dump(scenario, f, ensure_ascii=False, indent=2)
+            else:
+                print("  ⚠️ リール画像生成失敗（Step2 で再生成可）")
+        else:
+            print("\n[4/4] スキップ（今日はリールなし）")
+
+        # 5. ブリーフィングを Discord に一括送信してメッセージIDを保存
         print("\n[Discord] ブリーフィング送信")
         message_id = self._send_briefing_discord(ctx, scenario, story_images, feed_image_path=feed_image_path)
         if message_id:
-            # ストーリーズ画像を別メッセージで確認用に送信
+            # ストーリーズ画像をスロット別に送信
             if story_images:
                 self._send_story_images_discord(story_images, ctx)
+            # リール画像を送信
+            if reel_image_path:
+                self._send_reel_image_discord(reel_image_path, ctx["date"], ctx, scenario, reel_video_prompt)
             scenario["discord_message_id"] = message_id
             scenario["discord_status"]     = "pending"
             scenario["briefing_date"]      = ctx["date"]
             with open(scenario_path, "w", encoding="utf-8") as f:
                 json.dump(scenario, f, ensure_ascii=False, indent=2)
 
-        # 5. リールがある日だけ #video-uploads に動画依頼を送信
+        # 6. リールがある日だけ #video-uploads に動画アップロード依頼を送信
         if ctx.get("has_reel"):
             print("\n[Discord] 動画アップロード依頼送信")
             self._notify_video_upload_request(ctx, scenario)
@@ -1345,6 +1459,61 @@ Output only the prompt, no explanation.""",
             _sys.exit(1)
 
 
+    def run_redo_reel_mode(self, override_hint: str = "", target_date_str: str = ""):
+        """リール画像を再生成してDiscordに送信する。"""
+        import sys as _sys
+        from datetime import date as _date, timezone as _tz3, timedelta as _td3
+
+        _jst3 = _tz3(_td3(hours=9))
+        if target_date_str:
+            from datetime import datetime as _dt3
+            target_dt = _dt3.strptime(target_date_str, "%Y-%m-%d")
+            date_str  = target_dt.strftime("%Y%m%d")
+        else:
+            date_str = datetime.now(_jst3).strftime("%Y%m%d")
+
+        print(f"🔄 リール画像再生成: {date_str}" + (f" / hint: {override_hint}" if override_hint else ""))
+
+        # 既存リール画像を削除して強制再生成
+        reel_dir = Path("./reel_output")
+        for suffix in (".jpg", ".png"):
+            p = reel_dir / f"reel_{date_str}{suffix}"
+            if p.exists():
+                p.unlink()
+                print(f"  🗑️ 削除: {p.name}")
+
+        # シナリオ読み込み
+        scenario_path = Path("./current_scenario.json")
+        if not scenario_path.exists():
+            print("❌ current_scenario.json なし")
+            _sys.exit(1)
+        scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+
+        # override_hint がある場合はシーン設定を上書き
+        if override_hint:
+            scenario = dict(scenario)
+            scenario["main_shot"] = override_hint
+
+        # 日付に対応したコンテキストを読み込む
+        ctx_path = Path(f"./daily_contexts/context_{date_str}.json")
+        ctx = json.loads(ctx_path.read_text(encoding="utf-8")) if ctx_path.exists() else {}
+
+        reel_image_path = self._generate_reel_image(scenario, date_str)
+        if not reel_image_path:
+            print("❌ リール画像生成失敗")
+            _sys.exit(1)
+
+        # 動画プロンプト再生成
+        reel_video_prompt = ""
+        try:
+            reel_video_prompt = self.generate_video_prompt(scenario)
+        except Exception as e:
+            print(f"⚠️ 動画プロンプト生成失敗: {e}")
+
+        self._send_reel_image_discord(reel_image_path, date_str, ctx, scenario, reel_video_prompt)
+        print(f"✅ リール画像再生成完了: {reel_image_path.name}")
+
+
 if __name__ == "__main__":
     import sys
     mode = sys.argv[1] if len(sys.argv) > 1 else "scenario"
@@ -1353,6 +1522,10 @@ if __name__ == "__main__":
         generator.run_generate_mode()
     elif mode == "briefing":
         generator.run_briefing_mode()
+    elif mode == "redo_reel":
+        override_hint    = sys.argv[2] if len(sys.argv) > 2 else ""
+        target_date_str  = sys.argv[3] if len(sys.argv) > 3 else ""
+        generator.run_redo_reel_mode(override_hint, target_date_str)
     elif mode == "spot":
         content_type = sys.argv[2] if len(sys.argv) > 2 else "feed"
         description  = sys.argv[3] if len(sys.argv) > 3 else ""

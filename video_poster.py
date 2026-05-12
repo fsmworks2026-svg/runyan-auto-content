@@ -25,6 +25,24 @@ def check_and_post_video() -> bool:
     page_token = os.environ["INSTAGRAM_PAGE_ACCESS_TOKEN"]
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
+    # reel_post_window チェック（FORCE_POST=true でスキップ可）
+    if not os.environ.get("FORCE_POST", "").strip():
+        from zoneinfo import ZoneInfo
+        _jst      = ZoneInfo("Asia/Tokyo")
+        _now      = datetime.now(_jst)
+        _today    = _now.strftime("%Y%m%d")
+        _ctx_path = Path(f"./daily_contexts/context_{_today}.json")
+        if _ctx_path.exists():
+            _ctx = json.loads(_ctx_path.read_text(encoding="utf-8"))
+            pw   = _ctx.get("reel_post_window", [])
+            if len(pw) == 2 and not (pw[0] <= _now.hour < pw[1]):
+                print(f"現在 {_now.hour}時 は reel_post_window（{pw[0]}〜{pw[1]}時）外。スキップ。")
+                return False
+            elif len(pw) == 2:
+                print(f"✅ reel_post_window 内（{pw[0]}〜{pw[1]}時）。投稿チェック開始。")
+        else:
+            print(f"⚠️ daily_context なし（{_today}）。時間チェックをスキップして続行。")
+
     # 最後に処理した動画のメッセージIDを読み込む
     state_path = Path("last_video_id.json")
     state   = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {"last_id": "0"}
