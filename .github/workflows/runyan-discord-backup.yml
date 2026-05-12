@@ -174,6 +174,8 @@ jobs:
               sys.exit(1)
 
           messages = res.json()
+          STORY_REDO = {"朝作り直し:": "morning", "昼作り直し:": "afternoon", "夕方作り直し:": "evening", "夜作り直し:": "night"}
+
           for msg in reversed(messages):
               if msg.get("author", {}).get("bot"):
                   continue
@@ -181,25 +183,47 @@ jobs:
                   continue
 
               content = msg.get("content", "").strip()
-              if not content.startswith("新規:"):
-                  continue
 
-              theme = content[3:].strip()
-              print(f"新規リール作成コマンドを検出: {theme}")
+              # ── 「新規:」コマンド ──
+              if content.startswith("新規:"):
+                  theme = content[3:].strip()
+                  print(f"新規リール作成コマンドを検出: {theme}")
+                  gh_res = trigger_workflow(
+                      "runyan-scenario.yml",
+                      {"theme_override": theme, "is_spot_reel": "true"},
+                  )
+                  if gh_res:
+                      print(f"✅ Step1 を起動しました（テーマ: {theme}）")
+                      state["last_id"] = msg["id"]
+                      state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+                  else:
+                      print(f"❌ Step1 起動失敗")
+                      sys.exit(1)
+                  break
 
-              gh_res = trigger_workflow(
-                  "runyan-scenario.yml",
-                  {"theme_override": theme, "is_spot_reel": "true"},
-              )
-              if gh_res:
-                  print(f"✅ Step1 を起動しました（テーマ: {theme}）")
-                  state["last_id"] = msg["id"]
-                  state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-              else:
-                  print(f"❌ Step1 起動失敗")
-                  sys.exit(1)
+              # ── ストーリーズ個別作り直しコマンド ──
+              matched_slot = None
+              matched_hint = ""
+              for prefix, slot_id in STORY_REDO.items():
+                  if content.startswith(prefix):
+                      matched_slot = slot_id
+                      matched_hint = content[len(prefix):].strip()
+                      break
 
-              break  # 1回に1コマンドだけ処理
+              if matched_slot:
+                  print(f"ストーリーズ再生成コマンドを検出: slot={matched_slot} hint={matched_hint!r}")
+                  gh_res = trigger_workflow(
+                      "runyan-redo-story.yml",
+                      {"slot": matched_slot, "override_hint": matched_hint, "target_date": ""},
+                  )
+                  if gh_res:
+                      print(f"✅ runyan-redo-story.yml を起動しました")
+                      state["last_id"] = msg["id"]
+                      state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+                  else:
+                      print(f"❌ runyan-redo-story.yml 起動失敗")
+                      sys.exit(1)
+                  break
 
           EOF
 

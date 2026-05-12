@@ -254,13 +254,26 @@ async def on_message(message: discord.Message):
         )
         if ok:
             print(f"  ✅ runyan-scenario.yml 起動成功（テーマ: {theme}）")
-            # バックアップポーリングの重複処理を防ぐため last_command_id を更新
             try:
                 update_last_command_id(str(message.id))
                 print(f"  last_command_id.json → {message.id}")
             except Exception as e:
                 print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
         return
+
+    # ── ストーリーズ個別作り直しコマンド ──
+    # 書式: 「朝作り直し: [指示]」「昼作り直し: [指示]」「夕方作り直し: [指示]」「夜作り直し: [指示]」
+    STORY_REDO = {"朝作り直し:": "morning", "昼作り直し:": "afternoon", "夕方作り直し:": "evening", "夜作り直し:": "night"}
+    for prefix, slot_id in STORY_REDO.items():
+        if content.startswith(prefix):
+            hint = content[len(prefix):].strip()
+            print(f"\n[{now}] ストーリーズ再生成コマンド検出: slot={slot_id} hint={hint!r}")
+            ok = trigger_workflow(
+                "runyan-redo-story.yml",
+                {"slot": slot_id, "override_hint": hint, "target_date": ""},
+            )
+            print(f"  runyan-redo-story.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+            return
 
     # ── 「修正:」コマンド または ブリーフィングへの返信 ──
     briefing_id = get_briefing_message_id()
