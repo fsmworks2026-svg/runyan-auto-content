@@ -196,23 +196,41 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 季節：{ctx['season_jp']} — {ctx['season_weather']}"""
 
     else:
-        ref_role_text = (
-            "\nReference images: the first image is the character to reproduce exactly. "
-            "The second image is the room background — keep this background completely unchanged. "
-            "Do not alter any furniture, lighting, colors, or room elements. "
-            "Simply place the character from the first image naturally inside this exact background.\n"
-        ) if room_image_path and room_image_path.exists() else ""
+        # casual / room スロットも日本語プロンプトに統一
+        if outfit_type == "casual":
+            prompt = f"""1枚目の写真と同じ人物で生成してください。
+21歳の日本人女性、るーにゃ。顔の特徴・髪型・目の形を忠実に再現すること。
+ダークブラウンのセミロングヘア、ゆるいウェーブ、薄いエアリーな前髪。
 
-        prompt = f"""{CHARA_BASE}
+ナチュラルメイク。ソフトな頬紅、コーラルベージュリップ、ライトアイメイク。
+{outfit}を着ている。
 
-{makeup_text}
-
-Wearing {outfit}.
-
-Scene:
 {slot['scene_hint']}
-Season: {ctx['season_jp']} — {ctx['season_weather']}
-{room_text}{camera_text}{conceal_text}{ref_role_text}"""
+季節：{ctx['season_jp']} — {ctx['season_weather']}
+
+自撮りで撮影。自然なカジュアルアングル。
+フォトリアリスティック。縦9:16。Instagramストーリーズ。"""
+
+        else:  # room（ミラー or ソファ）
+            room_camera = (
+                "部屋の姿見の前に立ち、スマホを鏡に向けてミラーセルフィーを撮っている。スマホが顔の上部を自然に隠す。鏡のフレームが画角の端に見える。"
+                if room_style == "mirror" else
+                "ソファに座ってスマホのインカメラで自撮りをしている。腕を少し伸ばして。リラックスしたカジュアルなポーズ。"
+            )
+            prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
+
+この部屋に、1枚目の写真と同じ人物を配置してください。
+21歳の日本人女性、るーにゃ。顔の特徴・髪型・目の形を忠実に再現すること。
+ダークブラウンのセミロングヘア、ゆるいウェーブ、薄いエアリーな前髪。
+
+ナチュラルメイク。ソフトな頬紅、コーラルベージュリップ、ライトアイメイク。
+{outfit}を着ている。
+
+{slot['scene_hint']}
+季節：{ctx['season_jp']} — {ctx['season_weather']}
+
+{room_camera}
+フォトリアリスティック。縦9:16。Instagramストーリーズ。"""
 
     if outfit_type == "pajamas":
         style_label = f" [{pj_style}]"
