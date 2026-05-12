@@ -18,51 +18,30 @@ JST = timezone(timedelta(hours=9))
 
 def post_story_image(image_path: Path, ig_user_id: str, page_token: str) -> str:
     """
-    Instagram Graph API で Stories に画像を resumable upload で投稿する。
+    Instagram Graph API で Stories に画像を投稿する。
+    resumable upload は動画専用のため、画像は source パラメータで直接アップロードする。
     """
-    file_size    = image_path.stat().st_size
     content_type = "image/jpeg" if image_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
 
-    # 1. コンテナ作成（content_type を明示しないと動画として扱われエラーになる）
-    print("  📤 Storiesアップロードセッション開始...")
-    res = requests.post(
-        f"https://graph.facebook.com/v25.0/{ig_user_id}/media",
-        params={
-            "media_type":   "STORIES",
-            "upload_type":  "resumable",
-            "content_type": content_type,
-            "access_token": page_token,
-        },
-    )
+    # 1. コンテナ作成（source = multipart form-data で直接バイナリ送信）
+    print("  📤 Storiesコンテナ作成...")
+    with open(image_path, "rb") as f:
+        res = requests.post(
+            f"https://graph.facebook.com/v25.0/{ig_user_id}/media",
+            data={
+                "media_type":   "STORIES",
+                "access_token": page_token,
+            },
+            files={"source": (image_path.name, f, content_type)},
+            timeout=120,
+        )
     if res.status_code != 200:
         raise Exception(f"コンテナ作成失敗: {res.status_code} {res.text}")
 
-    data         = res.json()
-    container_id = data["id"]
-    upload_uri   = data.get("uri")
-    if not upload_uri:
-        raise Exception(f"upload_uri 取得失敗: {data}")
+    container_id = res.json()["id"]
     print(f"  コンテナID: {container_id}")
 
-    # 2. バイナリ送信
-    print(f"  ⬆️  画像バイナリ送信中 ({file_size // 1024}KB)...")
-    with open(image_path, "rb") as f:
-        up_res = requests.post(
-            upload_uri,
-            headers={
-                "Authorization": f"OAuth {page_token}",
-                "offset":        "0",
-                "file_size":     str(file_size),
-                "Content-Type":  content_type,
-            },
-            data=f,
-            timeout=120,
-        )
-    if up_res.status_code not in (200, 201):
-        raise Exception(f"バイナリ送信失敗: {up_res.status_code} {up_res.text}")
-    print("  ✅ バイナリ送信完了")
-
-    # 3. FINISHED 待機（最大3分）
+    # 2. FINISHED 待機（最大3分）
     print("  ⏳ Instagram 処理待機中...")
     for i in range(18):
         time.sleep(10)
@@ -79,7 +58,7 @@ def post_story_image(image_path: Path, ig_user_id: str, page_token: str) -> str:
     else:
         raise Exception("コンテナ処理タイムアウト（3分超過）")
 
-    # 4. 投稿
+    # 3. 投稿
     print("  🚀 Instagram Stories に投稿中...")
     pub_res = requests.post(
         f"https://graph.facebook.com/v25.0/{ig_user_id}/media_publish",
