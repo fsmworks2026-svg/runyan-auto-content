@@ -698,18 +698,32 @@ Mood: {scenario.get('mood', 'casual')}
             "description": scenario.get("scenario", ""),
             "color": 0xFFAA00,
             "fields": fields,
-            "footer": {"text": "「OK」で承認 / 修正内容をコメントで投稿してください（10分以内に自動反映）"},
+            "footer": {"text": "✅ で画像生成開始 / ❌ でスキップ / 返信で修正指示"},
         }
 
         # ?wait=true でメッセージIDを取得して保存
         res = requests.post(DISCORD_WEBHOOK_URL + "?wait=true", json={"embeds": [embed]})
         if res.status_code == 200:
-            message_id = res.json().get("id")
+            msg_data   = res.json()
+            message_id = msg_data.get("id")
+            channel_id = msg_data.get("channel_id")
             scenario["discord_message_id"] = message_id
             scenario["discord_status"] = "pending"
             with open(scenario_path, "w", encoding="utf-8") as f:
                 json.dump(scenario, f, ensure_ascii=False, indent=2)
             print(f"✅ Discord にシナリオを投稿しました（メッセージID: {message_id}）")
+
+            # ✅/❌ リアクションをボットが追加
+            bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+            if message_id and channel_id and bot_token:
+                headers = {"Authorization": f"Bot {bot_token}"}
+                for emoji in ["✅", "❌"]:
+                    requests.put(
+                        f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}"
+                        f"/reactions/{requests.utils.quote(emoji)}/@me",
+                        headers=headers, timeout=10,
+                    )
+                print("  👍 ✅/❌ リアクション追加完了")
         else:
             print(f"❌ Discord 投稿失敗: {res.status_code}")
 
