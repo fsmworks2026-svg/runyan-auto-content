@@ -17,8 +17,16 @@ from strip_metadata import strip_image
 
 load_dotenv()
 
-client          = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# OpenAI クライアントは画像生成時にのみ初期化（feed_poster からのインポート時に失敗しないよう遅延）
+_client         = None
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL", "")
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return _client
 
 OUTPUT_DIR = Path("./feed_output")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -50,7 +58,7 @@ def generate_food_image(scene_prompt: str, today_str: str) -> Path | None:
     prompt = f"{FOOD_PROMPT_BASE}\n\nScene: {scene_prompt}"
     print("  🍰 フード画像生成中...")
     try:
-        response = client.images.generate(
+        response = _get_client().images.generate(
             model="gpt-image-2",
             prompt=prompt,
             n=1,
@@ -170,7 +178,7 @@ if __name__ == "__main__":
     from datetime import date
 
     target = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
-    ctx    = dc.load_or_create(target, openai_client=client)
+    ctx    = dc.load_or_create(target, openai_client=_get_client())
 
     print(f"フィード設定: has_feed={ctx['has_feed']}, feed_type={ctx['feed_type']}")
     if ctx["has_feed"]:
