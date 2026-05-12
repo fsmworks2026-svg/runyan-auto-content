@@ -156,6 +156,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         camera_text  = (
             "\nWearing pajamas. Natural mirror selfie, upper body framing. "
             "Phone held up at chest height to photograph her reflection in the mirror. Slight casual tilt. "
+            "Mirror frame visible at the edges of the photo — the entire shot is the mirror reflection. "
             "Warm amber lamplight softly illuminating her face and body, matching the room's cozy lighting.\n"
         )
         conceal_text = (
