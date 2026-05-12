@@ -77,6 +77,11 @@ def _select_room_image(slot: dict, room_style: str = "mirror") -> Path | None:
     スロットの衣装タイプと時間帯から部屋背景画像を返す。
     屋外・カジュアル系はNoneを返す。
     room_style: "mirror"（姿見）または "sofa"（ソファ）
+    scene_hint にキーワードが含まれる場合は背景を上書き。
+      ソファ / リビング → living_sofa_{suffix}
+      鏡 / 姿見      → living_mirror_{suffix}
+      洗面台 / 洗面所  → washroom_mirror
+      （なし / 寝室 / ベッド → bedroom_entrance_{suffix}）
     """
     room_dir = Path("./部屋画像")
     outfit_type = slot.get("outfit_type", "casual")
@@ -84,14 +89,20 @@ def _select_room_image(slot: dict, room_style: str = "mirror") -> Path | None:
     # 時間帯判定（post_windowの開始時刻で夜かどうかを判断）
     start_hour = slot.get("post_window", [12, 14])[0]
     is_night = start_hour >= 17 or start_hour <= 4
+    suffix = "night" if is_night else "morning"
 
     if outfit_type == "pajamas":
-        # パジャマ = 寝室（朝か夜）
-        suffix = "night" if is_night else "morning"
+        hint = slot.get("scene_hint", "")
+        if any(kw in hint for kw in ("ソファ", "リビング")):
+            return room_dir / f"living_sofa_{suffix}.png"
+        if any(kw in hint for kw in ("鏡", "姿見")):
+            return room_dir / f"living_mirror_{suffix}.png"
+        if any(kw in hint for kw in ("洗面台", "洗面所")):
+            return room_dir / "washroom_mirror.png"
+        # デフォルト: 寝室
         return room_dir / f"bedroom_entrance_{suffix}.png"
 
     if outfit_type == "room":
-        suffix = "night" if is_night else "morning"
         if room_style == "sofa":
             return room_dir / f"living_sofa_{suffix}.png"
         return room_dir / f"living_mirror_{suffix}.png"
@@ -172,14 +183,22 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
     # パジャマスロットは日本語プロンプトで統一（背景を先に指定してアンカーにする）
     if outfit_type == "pajamas":
-        if is_night:
+        hint = slot.get("scene_hint", "")
+
+        # scene_hint のキーワードで pj_style を決定（override_hint 対応）
+        if any(kw in hint for kw in ("ソファ", "リビング")):
+            pj_style = "sofa_coffee"
+        elif any(kw in hint for kw in ("鏡", "姿見")):
+            pj_style = "mirror_selfie"
+        elif is_night:
             pj_style = random.choice(["bed_selfie", "mirror_selfie"])
         else:
             pj_style = random.choice(["bed_selfie", "mirror_selfie", "sofa_coffee"])
 
-        # sofa_coffee は living_sofa_morning.png を使う
+        # sofa_coffee は living_sofa_{suffix}.png を使う（キーワード上書き分も含む）
         if pj_style == "sofa_coffee":
-            room_image_path = Path("./部屋画像") / "living_sofa_morning.png"
+            suffix_pj = "night" if is_night else "morning"
+            room_image_path = Path("./部屋画像") / f"living_sofa_{suffix_pj}.png"
 
         time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかり"
         if pj_style == "bed_selfie":
@@ -187,7 +206,12 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         elif pj_style == "mirror_selfie":
             pj_camera = "その子が部屋の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
         else:  # sofa_coffee
-            pj_camera = "その子がリビングのソファに座り、朝のコーヒーを飲みながらスマホのインカメラで自撮りをしている。テーブルにコーヒーカップ。朝の生活感のある雰囲気。"
+            if is_night:
+                pj_camera = "その子がリビングのソファに座り、夜のリラックスタイムにスマホのインカメラで自撮りをしている。暖かい間接照明の雰囲気。"
+            else:
+                pj_camera = "その子がリビングのソファに座り、朝のコーヒーを飲みながらスマホのインカメラで自撮りをしている。テーブルにコーヒーカップ。朝の生活感のある雰囲気。"
+
+        hint_line = f"\n追加指示: {hint}" if hint else ""
 
         prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
 
@@ -198,7 +222,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 完全にすっぴん。化粧は一切なし。リップカラーなし・眉毛メイクなし・アイメイクなし。素肌そのまま。
 {outfit}を着ている。{time_context}。
 
-{pj_camera}
+{pj_camera}{hint_line}
 顔はすっぴんなので、鼻の上から目の下にかけて写真の上にデジタルで重ねた2DのInstagram風の星スタンプが浮いている。肌に溶け込まず、写真の上にフラットに乗っている2Dグラフィックのスタンプ。
 
 フォトリアリスティック。縦9:16。Instagramストーリーズ。
