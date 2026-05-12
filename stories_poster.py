@@ -53,6 +53,7 @@ def post_story_image(image_path: Path, ig_user_id: str, page_token: str) -> str:
                 "Authorization": f"OAuth {page_token}",
                 "offset":        "0",
                 "file_size":     str(file_size),
+                "Content-Type":  content_type,
             },
             data=f,
             timeout=120,
