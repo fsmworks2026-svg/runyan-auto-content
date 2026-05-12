@@ -109,7 +109,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
     # メイク説明
     makeup_text = {
-        "suppin":  "No makeup. Bare natural skin. Clean fresh face. Natural lip color.",
+        "suppin":  "Absolutely no makeup at all. Bare skin with zero cosmetics. Pale unpigmented lips, no lip color or tint whatsoever. Natural sparse brows with no eyebrow pencil or filling. No blush, no eye makeup, no concealer. Fresh bare just-woke-up face.",
         "natural": "Natural casual chic makeup. Soft rosy cheeks. Coral-beige lips. Light eye makeup.",
         "gachi":   "Glamorous full makeup. Bold eye makeup. Defined lips. Contoured skin.",
     }[makeup]
@@ -154,16 +154,24 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         if is_night:
             room_text = (
                 "\nRoom setting: Japanese apartment bedroom at night. "
-                "Warm orange lamp on the light oak open shelf — the only light source. "
-                "Light oak desk on the left side. White linen bed with pillow and blanket. "
-                "Room is dim, only the warm lamp illuminates the space.\n"
+                "Window with sheer lace curtains on the left. "
+                "Wooden desk and chair on the left side, small white table lamp on the desk glowing warm amber — main light source. "
+                "Flower vase and closed laptop on the desk. "
+                "Single bed with white bedding and orange fluffy blanket on the right side. Wooden headboard. "
+                "Small nightstand beside the bed. Wooden bookshelf to the right of the bed with books. "
+                "Round fluffy rug on the floor. Air conditioner on the upper wall. "
+                "Small photo prints on the right wall. Entire room bathed in warm amber lamplight.\n"
             )
         else:
             room_text = (
                 "\nRoom setting: Japanese apartment bedroom in the morning. "
-                "Soft natural sunlight through white lace curtains on the window. "
-                "Light oak desk on the left, open shelf with small items on the right. "
-                "White linen bed with pillow visible.\n"
+                "Window with sheer lace curtains on the left, bright natural morning sunlight flooding in. "
+                "Wooden desk and chair on the left, laptop and flower vase on the desk. Small white table lamp on the desk. "
+                "Single bed with white bedding and salmon-pink fluffy blanket on the right side. Wooden headboard. "
+                "Small wooden nightstand beside the bed with a tiny stuffed cat and flowers. "
+                "Small wooden bookshelf/cabinet between the desk area and the bed. "
+                "Round fluffy rug on the floor. Air conditioner on the upper wall. "
+                "Small photo prints on the right wall. Airy bright morning atmosphere.\n"
             )
         room_style   = "mirror"  # pajamas では未使用
         # 入口付近に立って外向きにセルフィー → bedroom_entrance 参照画像のアングルと一致する
@@ -183,7 +191,9 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     room_image_path = _select_room_image(slot, room_style=room_style)
     ref_role_text = (
         "\nReference images: the first image is the character to reproduce exactly. "
-        "The second image is the room background — place the character inside this exact room.\n"
+        "The second image is the room background — keep this background completely unchanged. "
+        "Do not alter any furniture, lighting, colors, or room elements. "
+        "Simply place the character from the first image naturally inside this exact background.\n"
     ) if room_image_path and room_image_path.exists() else ""
 
     prompt = f"""{CHARA_BASE}
