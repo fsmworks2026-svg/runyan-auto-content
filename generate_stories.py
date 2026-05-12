@@ -163,13 +163,23 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
     # パジャマスロットは日本語プロンプトで統一（背景を先に指定してアンカーにする）
     if outfit_type == "pajamas":
+        if is_night:
+            pj_style = random.choice(["bed_selfie", "mirror_selfie"])
+        else:
+            pj_style = random.choice(["bed_selfie", "mirror_selfie", "sofa_coffee"])
+
+        # sofa_coffee は living_sofa_morning.png を使う
+        if pj_style == "sofa_coffee":
+            room_image_path = Path("./部屋画像") / "living_sofa_morning.png"
+
         time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかり"
-        pj_style = random.choice(["bed_selfie", "mirror_selfie"])
-        pj_camera = (
-            "その子がベッドに座り、スマホのインカメラで自撮りをしている。"
-            if pj_style == "bed_selfie" else
-            "その子が部屋の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
-        )
+        if pj_style == "bed_selfie":
+            pj_camera = "その子がベッドに座り、スマホのインカメラで自撮りをしている。"
+        elif pj_style == "mirror_selfie":
+            pj_camera = "その子が部屋の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
+        else:  # sofa_coffee
+            pj_camera = "その子がリビングのソファに座り、朝のコーヒーを飲みながらスマホのインカメラで自撮りをしている。テーブルにコーヒーカップ。朝の生活感のある雰囲気。"
+
         prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
 
 この部屋に、1枚目の写真と同じ人物を配置してください。
