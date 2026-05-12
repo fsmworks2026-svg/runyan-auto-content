@@ -164,6 +164,12 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     # パジャマスロットは日本語プロンプトで統一（背景を先に指定してアンカーにする）
     if outfit_type == "pajamas":
         time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかりの雰囲気、自然な朝の光"
+        pj_style = random.choice(["bed_selfie", "mirror_selfie"])
+        pj_camera = (
+            "その子がベッドに座り、スマホのインカメラで自撮りをしている。"
+            if pj_style == "bed_selfie" else
+            "その子が部屋の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
+        )
         prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
 
 この部屋に、1枚目の写真と同じ人物を配置してください。
@@ -173,7 +179,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 完全にすっぴん。化粧は一切なし。リップカラーなし・眉毛メイクなし・アイメイクなし。素肌そのまま。
 {outfit}を着ている。{time_context}。
 
-その子がベッドに座り、スマホのインカメラで自撮りをしている。
+{pj_camera}
 顔はすっぴんなので、鼻の上から目の下にかけて可愛い星のスタンプを貼っており、目元が少し透けて見える。
 
 フォトリアリスティック。縦9:16。Instagramストーリーズ。
@@ -198,7 +204,12 @@ Scene:
 Season: {ctx['season_jp']} — {ctx['season_weather']}
 {room_text}{camera_text}{conceal_text}{ref_role_text}"""
 
-    style_label = f" [{room_style}]" if outfit_type == "room" else ""
+    if outfit_type == "pajamas":
+        style_label = f" [{pj_style}]"
+    elif outfit_type == "room":
+        style_label = f" [{room_style}]"
+    else:
+        style_label = ""
     print(f"  🎨 [{slot['label']}]{style_label} 画像生成中...")
     if room_image_path and room_image_path.exists():
         print(f"  🏠 部屋背景: {room_image_path.name}")
