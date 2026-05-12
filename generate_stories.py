@@ -163,7 +163,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
     # パジャマスロットは日本語プロンプトで統一（背景を先に指定してアンカーにする）
     if outfit_type == "pajamas":
-        time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかりの雰囲気、自然な朝の光"
+        time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかり"
         pj_style = random.choice(["bed_selfie", "mirror_selfie"])
         pj_camera = (
             "その子がベッドに座り、スマホのインカメラで自撮りをしている。"
