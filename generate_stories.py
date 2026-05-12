@@ -156,16 +156,40 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         camera_text  = "\n添付した写真の子は寝間着でベッドに座り、スマホのインカメラで自撮りをしている。\n"
         conceal_text = "\n顔はすっぴんなので、可愛い星のスタンプで目元を少し隠している。\n"
 
-    # 部屋参照画像がある場合、プロンプトに役割を明示する
+    # 部屋参照画像の選択
     room_image_path = _select_room_image(slot, room_style=room_style)
-    ref_role_text = (
-        "\nReference images: the first image is the character to reproduce exactly. "
-        "The second image is the room background — keep this background completely unchanged. "
-        "Do not alter any furniture, lighting, colors, or room elements. "
-        "Simply place the character from the first image naturally inside this exact background.\n"
-    ) if room_image_path and room_image_path.exists() else ""
+    if outfit_type == "casual":
+        room_image_path = None
 
-    prompt = f"""{CHARA_BASE}
+    # パジャマスロットは日本語プロンプトで統一
+    if outfit_type == "pajamas":
+        prompt = f"""添付した1枚目の写真と同じ人物で生成してください。
+21歳の日本人女性、るーにゃ。顔の特徴・髪型・目の形を忠実に再現すること。
+ダークブラウンのセミロングヘア、ゆるいウェーブ、薄いエアリーな前髪。
+フォトリアリスティック。縦9:16。Instagramストーリーズ。
+
+完全にすっぴん。化粧は一切なし。リップカラーなし・眉毛メイクなし・アイメイクなし。素肌そのまま。
+
+{outfit}を着ている。
+
+{slot['scene_hint']}
+季節：{ctx['season_jp']} — {ctx['season_weather']}
+
+添付した写真の子は寝間着でベッドに座り、スマホのインカメラで自撮りをしている。
+顔はすっぴんなので、可愛い星のスタンプで目元を少し隠している。
+
+1枚目の写真：再現するキャラクターの参照画像。
+2枚目の写真：背景の部屋。この部屋をそのまま背景として使うこと。家具・照明・色は一切変えないこと。"""
+
+    else:
+        ref_role_text = (
+            "\nReference images: the first image is the character to reproduce exactly. "
+            "The second image is the room background — keep this background completely unchanged. "
+            "Do not alter any furniture, lighting, colors, or room elements. "
+            "Simply place the character from the first image naturally inside this exact background.\n"
+        ) if room_image_path and room_image_path.exists() else ""
+
+        prompt = f"""{CHARA_BASE}
 
 {makeup_text}
 
@@ -175,10 +199,6 @@ Scene:
 {slot['scene_hint']}
 Season: {ctx['season_jp']} — {ctx['season_weather']}
 {room_text}{camera_text}{conceal_text}{ref_role_text}"""
-
-    # room_image_path は上の ref_role_text 生成時に決定済み（casual の場合は None）
-    if outfit_type == "casual":
-        room_image_path = None
 
     style_label = f" [{room_style}]" if outfit_type == "room" else ""
     print(f"  🎨 [{slot['label']}]{style_label} 画像生成中...")
