@@ -246,8 +246,8 @@ async def on_message(message: discord.Message):
     if message.channel.id != CHANNEL_ID:
         return
 
-    content = message.content.strip()
-    now     = datetime.now(JST).strftime("%Y-%m-%d %H:%M JST")
+    content    = message.content.strip().replace("：", ":")  # 全角コロンを半角に統一
+    now        = datetime.now(JST).strftime("%Y-%m-%d %H:%M JST")
 
     # ── 「新規:」コマンド（スポット投稿）──
     if content.startswith("新規:"):
@@ -268,10 +268,10 @@ async def on_message(message: discord.Message):
 
     # ── ストーリーズ個別作り直しコマンド ──
     # 書式: 「朝作り直し: [指示]」「昼作り直し: [指示]」「夕方作り直し: [指示]」「夜作り直し: [指示]」
-    STORY_REDO = {"朝作り直し:": "morning", "昼作り直し:": "afternoon", "夕方作り直し:": "evening", "夜作り直し:": "night"}
+    STORY_REDO = {"朝作り直し": "morning", "昼作り直し": "afternoon", "夕方作り直し": "evening", "夜作り直し": "night"}
     for prefix, slot_id in STORY_REDO.items():
-        if content.startswith(prefix):
-            hint = content[len(prefix):].strip()
+        if content.startswith(prefix + ":"):
+            hint = content[len(prefix) + 1:].strip()
             print(f"\n[{now}] ストーリーズ再生成コマンド検出: slot={slot_id} hint={hint!r}")
             ok = trigger_workflow(
                 "runyan-redo-story.yml",
