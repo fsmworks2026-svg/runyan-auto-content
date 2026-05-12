@@ -190,7 +190,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 {outfit}を着ている。{time_context}。
 
 {pj_camera}
-顔はすっぴんなので、鼻の上から目の下にかけて可愛い星のスタンプを貼っており、目元が少し透けて見える。
+顔はすっぴんなので、鼻の上から目の下にかけて写真の上にデジタルで重ねた2DのInstagram風の星スタンプが浮いている。肌に溶け込まず、写真の上にフラットに乗っている2Dグラフィックのスタンプ。
 
 フォトリアリスティック。縦9:16。Instagramストーリーズ。
 季節：{ctx['season_jp']} — {ctx['season_weather']}"""
