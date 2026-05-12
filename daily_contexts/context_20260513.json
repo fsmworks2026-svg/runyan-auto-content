@@ -1,0 +1,84 @@
+{
+  "date": "20260513",
+  "date_display": "2026/5/13（水曜日）",
+  "season": "spring",
+  "season_jp": "春",
+  "season_weather": "暖かい。桜や新緑の季節。薄手のアウター・ニット・シャツ",
+  "casual_outfit": "Cream oversized sweater, pastel pink midi skirt, denim jacket, white canvas sneakers, woven crossbody bag, delicate gold necklace.",
+  "room_wear": "soft pink spaghetti-strap camisole top, loose cream linen wide pants",
+  "pajamas": "soft lavender silk-look camisole and wide-leg shorts pajama set",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "empty coffee mug and phone on charging cable beside the MacBook",
+  "room_seasonal": "a small vase with pink flowers on the windowsill",
+  "day_jp": "水曜日",
+  "afternoon": {
+    "label": "自由",
+    "scene": "relaxed afternoon out, wandering around town",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "バイト",
+    "scene": "leaving the cafe after work shift, tired but cute on the way home",
+    "outfit_type": "casual"
+  },
+  "reel_post_window": [
+    12,
+    15
+  ],
+  "has_reel": true,
+  "has_feed": false,
+  "feed_type": "none",
+  "feed_food_scene": "",
+  "feed_post_window": [],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        9
+      ],
+      "scene_hint": "水曜日の朝 — 自由に向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        13
+      ],
+      "scene_hint": "自由 — relaxed afternoon out, wandering around town"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        20
+      ],
+      "scene_hint": "バイト — leaving the cafe after work shift, tired but cute on the way home"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "バイトが終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "Lying in bed: white fluffy duvet pulled up to the nose — only half-open tired eyes and disheveled bangs peek out above the blanket edge. Warm ambient lamp light."
+}
