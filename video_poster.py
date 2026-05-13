@@ -18,30 +18,37 @@ from strip_metadata import strip_video
 
 
 def check_and_post_video() -> bool:
-    """新しい動画を検出してInstagramにリール投稿する。投稿した場合Trueを返す。"""
-    bot_token  = os.environ["DISCORD_BOT_TOKEN"]
-    channel_id = os.environ["DISCORD_VIDEO_CHANNEL_ID"]
-    ig_user_id = os.environ["INSTAGRAM_BUSINESS_ACCOUNT_ID"]
-    page_token = os.environ["INSTAGRAM_PAGE_ACCESS_TOKEN"]
+    """新しい動画を検出してInstagramにリール投稿する。投稿した場合Trueを返す。
+    投稿ウィンドウ外でも処理済み動画の保存は行う。
+    """
+    bot_token   = os.environ["DISCORD_BOT_TOKEN"]
+    channel_id  = os.environ["DISCORD_VIDEO_CHANNEL_ID"]
+    ig_user_id  = os.environ["INSTAGRAM_BUSINESS_ACCOUNT_ID"]
+    page_token  = os.environ["INSTAGRAM_PAGE_ACCESS_TOKEN"]
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
-    # reel_post_window チェック（FORCE_POST=true でスキップ可）
-    if not os.environ.get("FORCE_POST", "").strip():
-        from zoneinfo import ZoneInfo
-        _jst      = ZoneInfo("Asia/Tokyo")
-        _now      = datetime.now(_jst)
-        _today    = _now.strftime("%Y%m%d")
+    from zoneinfo import ZoneInfo
+    _jst   = ZoneInfo("Asia/Tokyo")
+    _now   = datetime.now(_jst)
+    _today = _now.strftime("%Y%m%d")
+
+    # reel_post_window チェック（投稿可否の判定のみ。処理はウィンドウ外でも実行する）
+    force_post    = os.environ.get("FORCE_POST", "").strip().lower() == "true"
+    within_window = force_post  # FORCE_POST=true なら常に投稿可
+    if not force_post:
         _ctx_path = Path(f"./daily_contexts/context_{_today}.json")
         if _ctx_path.exists():
             _ctx = json.loads(_ctx_path.read_text(encoding="utf-8"))
             pw   = _ctx.get("reel_post_window", [])
-            if len(pw) == 2 and not (pw[0] <= _now.hour < pw[1]):
-                print(f"現在 {_now.hour}時 は reel_post_window（{pw[0]}〜{pw[1]}時）外。スキップ。")
-                return False
-            elif len(pw) == 2:
-                print(f"✅ reel_post_window 内（{pw[0]}〜{pw[1]}時）。投稿チェック開始。")
+            if len(pw) == 2:
+                within_window = pw[0] <= _now.hour < pw[1]
+                status = f"✅ reel_post_window 内（{pw[0]}〜{pw[1]}時）" if within_window else f"⏰ reel_post_window 外（{pw[0]}〜{pw[1]}時）— 保存のみ"
+                print(status)
+            else:
+                within_window = True  # window 未設定なら常に投稿可
         else:
             print(f"⚠️ daily_context なし（{_today}）。時間チェックをスキップして続行。")
+            within_window = True
 
     # 最後に処理した動画のメッセージIDを読み込む
     state_path = Path("last_video_id.json")
@@ -73,21 +80,39 @@ def check_and_post_video() -> bool:
 
             caption = _load_caption()
 
+            # 処理済み動画の保存先（reel_output/ に永続保存）
+            reel_dir       = Path("./reel_output")
+            reel_dir.mkdir(exist_ok=True)
+            processed_path = reel_dir / f"reel_{_today}.mov"
+
             try:
-                # Discord からダウンロードして一時ファイルに保存
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    raw_path   = Path(tmpdir) / filename
-                    clean_path = Path(tmpdir) / f"clean_{Path(filename).stem}_iphone.mov"
+                if processed_path.exists():
+                    print(f"  ✅ 処理済み動画が既に存在: {processed_path.name}")
+                else:
+                    # Discord からダウンロードしてメタデータを除去・永続保存
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        raw_path   = Path(tmpdir) / filename
+                        clean_path = Path(tmpdir) / f"clean_{Path(filename).stem}_iphone.mov"
 
-                    print("  ⬇️  動画ダウンロード中...")
-                    _download_file(attachment["url"], raw_path)
+                        print("  ⬇️  動画ダウンロード中...")
+                        _download_file(attachment["url"], raw_path)
 
-                    # ffmpeg で AI メタデータを除去して iPhone 15 Pro タグに置き換える
-                    print("  🧹 メタデータを iPhone 15 Pro に書き換え中...")
-                    strip_video(raw_path, clean_path, shoot_time=datetime.now())
+                        print("  🧹 メタデータを iPhone 15 Pro に書き換え中...")
+                        strip_video(raw_path, clean_path, shoot_time=datetime.now(_jst))
 
-                    # Instagram resumable upload で直接バイナリ送信
-                    post_id = _post_reel_resumable(clean_path, caption, ig_user_id, page_token)
+                        import shutil
+                        shutil.copy(clean_path, processed_path)
+                    print(f"  💾 処理済み動画を保存: {processed_path.name}")
+                    if webhook_url:
+                        requests.post(webhook_url, json={"content": f"💾 動画処理完了・保存済み: {processed_path.name}"})
+
+                # 投稿ウィンドウ外の場合はここで終了（last_id は更新しない）
+                if not within_window:
+                    print("  ⏰ 投稿ウィンドウ外のため今回は保存のみ。次回ウィンドウ内で自動投稿します。")
+                    return False
+
+                # Instagram resumable upload で投稿
+                post_id = _post_reel_resumable(processed_path, caption, ig_user_id, page_token)
 
                 if webhook_url:
                     requests.post(webhook_url, json={
@@ -95,9 +120,9 @@ def check_and_post_video() -> bool:
                     })
 
             except Exception as e:
-                print(f"❌ Instagram投稿エラー: {e}")
+                print(f"❌ 処理/投稿エラー: {e}")
                 if webhook_url:
-                    requests.post(webhook_url, json={"content": f"❌ Instagram投稿失敗: {e}"})
+                    requests.post(webhook_url, json={"content": f"❌ リール処理/投稿失敗: {e}"})
                 sys.exit(1)
 
             state["last_id"] = msg["id"]

@@ -15,6 +15,8 @@ generated_content/
 *.webm
 *.mov
 *.avi
+# 処理済みリール動画は保管する
+!reel_output/*.mov
 
 # Python
 __pycache__/
