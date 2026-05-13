@@ -142,41 +142,22 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     is_night    = start_hour >= 17 or start_hour <= 4
 
     if outfit_type == "casual":
-        room_text   = ""
-        room_style  = "mirror"  # casual では未使用
-        camera_text = "\nSelfie stick shot. Front camera, wider angle. Natural casual angle, not tripod-level perfect framing.\n"
-        conceal_text = ""  # 外出＋メイクあり → 顔隠し不要
+        room_style   = "mirror"  # _select_room_image のデフォルト用途のみ（casual では未使用）
+        camera_text  = "\nSelfie stick shot. Front camera, wider angle. Natural casual angle, not tripod-level perfect framing.\n"
+        conceal_text = ""
 
     elif outfit_type == "room":
         room_style = random.choice(["mirror", "sofa"])
         if room_style == "mirror":
-            room_text    = (
-                "\nRoom setting: Japanese 1LDK apartment living room. "
-                "Full-length mirror with rounded light oak wood frame leaning against the white wall. "
-                "Light oak flooring. Small green plant in white pot beside the mirror. "
-                "Dining table and chair partially visible on the right edge. "
-                "Kitchen with white refrigerator visible in the mirror reflection. "
-                "Postcard prints on the wall to the right of the mirror.\n"
-            )
             camera_text  = "\nMirror selfie. Character standing directly in front of the full-length mirror, arm raised holding phone toward mirror. Phone back covers upper face in reflection.\n"
-            conceal_text = ""  # 鏡セルフィー: スマホが顔を自然に隠す（追加テキスト不要）
-
+            conceal_text = ""
         else:
-            room_text    = (
-                "\nRoom setting: Japanese 1LDK apartment living room. "
-                "Beige fabric 2-seater sofa against the wall. Character sitting on the sofa. "
-                "Light oak low table in front with a phone or manga on it. "
-                "Lace curtains on the window. Warm ambient lighting.\n"
-            )
             camera_text  = "\nFront camera selfie sitting on the sofa. Arm extended toward camera. Slightly downward angle. Relaxed casual pose on couch.\n"
-            conceal_text = ""  # 部屋着＋メイクあり → 顔隠し不要
+            conceal_text = ""
 
     else:
-        # パジャマ（朝・夜の寝室）- シンプルな指示で参照画像に任せる
-        room_text    = ""
-        room_style   = "mirror"  # pajamas では未使用
-        camera_text  = "\n添付した写真の子は寝間着でベッドに座り、スマホのインカメラで自撮りをしている。\n"
-        conceal_text = "\n顔はすっぴんなので、可愛い星のスタンプで目元を少し隠している。\n"
+        # パジャマ（朝・夜）- room_style は _select_room_image のデフォルト用途のみ
+        room_style = "mirror"
 
     # 部屋参照画像の選択
     room_image_path = _select_room_image(slot, room_style=room_style)
@@ -209,10 +190,12 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         else:
             pj_style = random.choice(["bed_selfie", "mirror_selfie", "sofa_coffee"])
 
-        # sofa_coffee は living_sofa_{suffix}.png を使う（キーワード上書き分も含む）
+        # pj_style に合わせて room_image_path を確定（ランダム選択時も背景と一致させる）
+        suffix_pj = "night" if is_night else "morning"
         if pj_style == "sofa_coffee":
-            suffix_pj = "night" if is_night else "morning"
             room_image_path = Path("./部屋画像") / f"living_sofa_{suffix_pj}.png"
+        elif pj_style == "mirror_selfie":
+            room_image_path = Path("./部屋画像") / f"living_mirror_{suffix_pj}.png"
 
         time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかり"
         if pj_style == "bed_selfie":
