@@ -442,16 +442,8 @@ async def on_message(message: discord.Message):
             print(f"  runyan-spot-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
         return
 
-    # ── 「修正:」コマンド または ブリーフィングへの返信 ──
-    briefing_id = get_briefing_message_id()
-    if not briefing_id:
-        return
-
-    is_reply      = (message.reference is not None and
-                     str(message.reference.message_id) == briefing_id)
-    is_correction = content.startswith("修正:")
-
-    if is_reply or is_correction:
+    # ── 「修正:」コマンド（プレフィックス必須）──
+    if content.startswith("修正:"):
         print(f"\n[{now}] 修正コマンド検出: {content}")
         set_regenerating()
         ok = trigger_workflow("runyan-scenario.yml", {"theme_override": content})

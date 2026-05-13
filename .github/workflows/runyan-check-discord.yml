@@ -141,9 +141,7 @@ jobs:
                   content = msg.get("content", "").strip()
                   if not content:
                       continue
-                  # 返信またはメンションを含む修正コメントを検出
-                  ref = msg.get("message_reference", {})
-                  if ref.get("message_id") == message_id or content.startswith("修正:"):
+                  if content.startswith("修正:"):
                       print(f"修正コメント検出: {content} → シナリオ再生成")
                       ok = trigger_workflow("runyan-scenario.yml", {"theme_override": content})
                       if ok:
