@@ -231,12 +231,22 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     else:
         # casual / room スロットも日本語プロンプトに統一
         if outfit_type == "casual":
+            # リール画像がある場合は服装参照あり（2枚目）、ない場合はテキストのみ
+            reel_dir = Path("./reel_output")
+            _has_outfit_ref = any(
+                (reel_dir / f"reel_{today_str}{s}").exists() for s in (".jpg", ".png")
+            )
+            outfit_ref_line = (
+                "2枚目の写真と完全に同じ服装・アクセサリーで生成すること。色・デザイン・素材感を忠実に再現すること。"
+                if _has_outfit_ref else
+                f"{outfit}を着ている。"
+            )
             prompt = f"""1枚目の写真と同じ人物で生成してください。
 21歳の日本人女性、るーにゃ。顔の特徴・髪型・目の形を忠実に再現すること。
 ダークブラウンのセミロングヘア、ゆるいウェーブ、薄いエアリーな前髪。
 
 ナチュラルメイク。ソフトな頬紅、コーラルベージュリップ、ライトアイメイク。
-{outfit}を着ている。
+{outfit_ref_line}
 
 {slot['scene_hint']}
 季節：{ctx['season_jp']} — {ctx['season_weather']}
@@ -281,14 +291,30 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     if room_image_path and room_image_path.exists():
         print(f"  🏠 部屋背景: {room_image_path.name}")
 
+    # casual スロット: リール画像があれば服装参照として追加
+    outfit_ref_path = None
+    if outfit_type == "casual":
+        reel_dir = Path("./reel_output")
+        for suffix in (".jpg", ".png"):
+            candidate = reel_dir / f"reel_{today_str}{suffix}"
+            if candidate.exists():
+                outfit_ref_path = candidate
+                print(f"  👗 服装参照: {candidate.name}")
+                break
+
     try:
-        char_file = open(ref_path, "rb")
-        if room_image_path and room_image_path.exists():
-            room_file = open(room_image_path, "rb")
+        char_file       = open(ref_path, "rb")
+        room_file       = open(room_image_path, "rb") if room_image_path and room_image_path.exists() else None
+        outfit_ref_file = open(outfit_ref_path, "rb") if outfit_ref_path else None
+
+        if room_file and outfit_ref_file:
+            images_input = [char_file, outfit_ref_file, room_file]
+        elif outfit_ref_file:
+            images_input = [char_file, outfit_ref_file]
+        elif room_file:
             images_input = [char_file, room_file]
         else:
             images_input = char_file
-            room_file = None
 
         response = client.images.edit(
             model="gpt-image-2",
@@ -299,6 +325,8 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         char_file.close()
         if room_file:
             room_file.close()
+        if outfit_ref_file:
+            outfit_ref_file.close()
     except Exception as e:
         print(f"  ⚠️  edit モード失敗: {e} → generate モードで再試行")
         try:
