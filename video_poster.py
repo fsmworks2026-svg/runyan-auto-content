@@ -100,6 +100,12 @@ def check_and_post_video() -> bool:
                 # Instagram resumable upload で投稿
                 post_id = _post_reel_resumable(processed_path, caption, ig_user_id, page_token)
 
+                # 投稿完了後に処理済みファイルを削除（動画 + リール画像）
+                for _del in [processed_path, reel_dir / f"reel_{_today}.jpg", reel_dir / f"reel_{_today}.png"]:
+                    if _del.exists():
+                        _del.unlink()
+                        print(f"  🗑️  投稿済みファイルを削除: {_del.name}")
+
                 if webhook_url:
                     requests.post(webhook_url, json={
                         "content": f"✅ Instagram リール投稿完了！\n📎 {filename}"
