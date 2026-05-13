@@ -51,6 +51,15 @@ jobs:
           HEADERS    = {"Authorization": f"Bot {BOT_TOKEN}"}
 
 
+          def notify_discord(text: str):
+              """Discord チャンネルにメッセージを送信する"""
+              requests.post(
+                  f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
+                  headers=HEADERS,
+                  json={"content": text},
+                  timeout=10,
+              )
+
           def trigger_workflow(workflow_file: str, inputs: dict = None) -> bool:
               """GitHub Actions ワークフローを workflow_dispatch で起動する"""
               res = requests.post(
@@ -181,7 +190,7 @@ jobs:
               if int(msg["id"]) <= int(last_id):
                   continue
 
-              content = msg.get("content", "").strip()
+              content = msg.get("content", "").strip().replace("：", ":")  # 全角コロンを半角に統一
 
               # ── 「新規:」コマンド ──
               if content.startswith("新規:"):
@@ -253,12 +262,14 @@ jobs:
               if content.startswith("リール作り直し:"):
                   hint = content[len("リール作り直し:"):].strip()
                   print(f"リール作り直しコマンドを検出" + (f": {hint}" if hint else ""))
+                  notify_discord("🔄 リール画像を再生成します...")
                   gh_res = trigger_workflow("runyan-redo-reel.yml", {"override_hint": hint, "target_date": ""})
                   if gh_res:
                       print(f"✅ runyan-redo-reel.yml を起動しました")
                       state["last_id"] = msg["id"]
                       state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
                   else:
+                      notify_discord("❌ リール再生成ワークフローの起動に失敗しました")
                       print(f"❌ runyan-redo-reel.yml 起動失敗")
                       sys.exit(1)
                   break
@@ -266,6 +277,7 @@ jobs:
               # ── ストーリーズ個別作り直しコマンド ──
               matched_slot = None
               matched_hint = ""
+              SLOT_LABELS  = {"morning": "朝", "afternoon": "昼", "evening": "夕方", "night": "夜"}
               for prefix, slot_id in STORY_REDO.items():
                   if content.startswith(prefix):
                       matched_slot = slot_id
@@ -274,6 +286,7 @@ jobs:
 
               if matched_slot:
                   print(f"ストーリーズ再生成コマンドを検出: slot={matched_slot} hint={matched_hint!r}")
+                  notify_discord(f"🔄 {SLOT_LABELS.get(matched_slot, matched_slot)}のストーリーズを再生成します...")
                   gh_res = trigger_workflow(
                       "runyan-redo-story.yml",
                       {"slot": matched_slot, "override_hint": matched_hint, "target_date": ""},
@@ -283,6 +296,7 @@ jobs:
                       state["last_id"] = msg["id"]
                       state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
                   else:
+                      notify_discord(f"❌ ストーリーズ再生成ワークフローの起動に失敗しました")
                       print(f"❌ runyan-redo-story.yml 起動失敗")
                       sys.exit(1)
                   break

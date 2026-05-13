@@ -386,12 +386,14 @@ async def on_message(message: discord.Message):
         ok = trigger_workflow("runyan-redo-reel.yml", {"override_hint": hint, "target_date": ""})
         if ok:
             print(f"  ✅ runyan-redo-reel.yml 起動成功")
+            await message.channel.send("🔄 リール画像を再生成します...")
             try:
                 update_last_command_id(str(message.id))
             except Exception as e:
                 print(f"  ⚠️ last_command_id.json 更新失敗（無視）: {e}")
         else:
             print(f"  ❌ runyan-redo-reel.yml 起動失敗")
+            await message.channel.send("❌ リール再生成の起動に失敗しました")
         return
 
     # ── スポット投稿コマンド（フィード: / ストーリーズ:）──
@@ -414,7 +416,8 @@ async def on_message(message: discord.Message):
 
     # ── ストーリーズ個別作り直しコマンド ──
     # 書式: 「朝作り直し: [指示]」「昼作り直し: [指示]」「夕方作り直し: [指示]」「夜作り直し: [指示]」
-    STORY_REDO = {"朝作り直し": "morning", "昼作り直し": "afternoon", "夕方作り直し": "evening", "夜作り直し": "night"}
+    STORY_REDO  = {"朝作り直し": "morning", "昼作り直し": "afternoon", "夕方作り直し": "evening", "夜作り直し": "night"}
+    SLOT_LABELS = {"morning": "朝", "afternoon": "昼", "evening": "夕方", "night": "夜"}
     for prefix, slot_id in STORY_REDO.items():
         if content.startswith(prefix + ":"):
             hint = content[len(prefix) + 1:].strip()
@@ -424,6 +427,10 @@ async def on_message(message: discord.Message):
                 {"slot": slot_id, "override_hint": hint, "target_date": ""},
             )
             print(f"  runyan-redo-story.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+            if ok:
+                await message.channel.send(f"🔄 {SLOT_LABELS.get(slot_id, slot_id)}のストーリーズを再生成します...")
+            else:
+                await message.channel.send(f"❌ ストーリーズ再生成の起動に失敗しました")
             return
 
     # ── スポット確認メッセージへの返信（作り直し）──
