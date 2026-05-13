@@ -13,13 +13,18 @@ import base64
 import json
 import requests
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from dotenv import load_dotenv
 from openai import OpenAI
 
 import daily_context as dc
 from strip_metadata import strip_image
-from datetime import datetime
+
+_JST = timezone(timedelta(hours=9))
+
+def _today_jst() -> date:
+    """GitHub Actions (UTC) / ローカル共通で JST の今日を返す"""
+    return datetime.now(_JST).date()
 
 load_dotenv()
 
@@ -363,7 +368,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         # AI生成メタデータを除去して iPhone 15 Pro EXIF に置き換える（PNG→JPEG）
         # 撮影時刻 = 投稿ウィンドウ開始時刻の少し前（自然に見えるよう）
         pw = slot["post_window"]
-        d  = target_date or date.today()
+        d  = target_date or _today_jst()
         shoot_dt = datetime(d.year, d.month, d.day, pw[0], 0, 0)
         out_path = strip_image(out_path, shoot_time=shoot_dt)
         print(f"  ✅ 保存完了: {out_path.name}")
@@ -375,7 +380,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
 def pick_caption(slot: dict, ctx: dict) -> str:
     """日付シードでキャプションをローテーション"""
-    doy = date.today().timetuple().tm_yday
+    doy = _today_jst().timetuple().tm_yday
     captions = {
         "morning": [
             f"おはよ〜 今日は{ctx['afternoon']['label']}だ ☕",
@@ -454,7 +459,7 @@ def send_discord(slot: dict, caption: str, image_path: Path) -> bool:
         # story_message_ids.json / approved_slots.json を更新（redo時の追跡）
         if message_id:
             slot_id   = slot["id"]
-            today_str = date.today().strftime("%Y%m%d")
+            today_str = _today_jst().strftime("%Y%m%d")
 
             ids_path     = Path("./story_message_ids.json")
             existing_ids = json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else {}
@@ -481,7 +486,7 @@ def send_discord(slot: dict, caption: str, image_path: Path) -> bool:
 
 def generate_all(target_date: date = None, notify_discord: bool = True) -> list[Path]:
     """全スロットのストーリーズ画像を生成して Path のリストを返す"""
-    d         = target_date or date.today()
+    d         = target_date or _today_jst()
     today_str = d.strftime("%Y%m%d")
     ctx       = dc.load_or_create(d, openai_client=client)
     slots     = ctx["story_slots"]

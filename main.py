@@ -1168,8 +1168,10 @@ Output only the prompt, no explanation.""",
         import daily_context as dc
         import generate_stories as gs
 
+        from datetime import timezone as _tz
+        _JST     = _tz(timedelta(hours=9))
         target_date_str = os.environ.get("TARGET_DATE", "").strip()
-        tomorrow = date.fromisoformat(target_date_str) if target_date_str else date.today() + timedelta(days=1)
+        tomorrow = date.fromisoformat(target_date_str) if target_date_str else (datetime.now(_JST).date() + timedelta(days=1))
 
         print("=" * 55)
         print(f"📅 ブリーフィングモード開始 → {tomorrow}")

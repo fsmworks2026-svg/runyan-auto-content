@@ -56,15 +56,17 @@ jobs:
         run: |
           python - <<'PYEOF'
           import os
-          from datetime import date
+          from datetime import date, datetime, timezone, timedelta
           from pathlib import Path
 
           import generate_stories as gs
           import daily_context as dc
 
-          # 対象日付の決定
+          _JST = timezone(timedelta(hours=9))
+
+          # 対象日付の決定（GitHub Actions は UTC のため JST で today を算出）
           target_date_str = os.environ.get("TARGET_DATE", "").strip()
-          target_date = date.fromisoformat(target_date_str) if target_date_str else date.today()
+          target_date = date.fromisoformat(target_date_str) if target_date_str else datetime.now(_JST).date()
           today_str   = target_date.strftime("%Y%m%d")
           slot_id     = os.environ.get("SLOT_ID", "morning").strip()
           override    = os.environ.get("OVERRIDE_HINT", "").strip()
