@@ -8,7 +8,7 @@
   "20260513": {
     "morning": true,
     "afternoon": true,
-    "evening": true,
+    "evening": null,
     "night": true
   }
 }
