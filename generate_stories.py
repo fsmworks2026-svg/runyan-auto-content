@@ -436,17 +436,42 @@ def send_discord(slot: dict, caption: str, image_path: Path) -> bool:
 
         print(f"  ✅ Discord 送信完了")
 
-        # ✅ リアクションを追加（Bot Token が設定されている場合）
-        if DISCORD_BOT_TOKEN and resp.status_code == 200:
-            msg_data   = resp.json()
-            channel_id = msg_data.get("channel_id", "")
-            message_id = msg_data.get("id", "")
-            if channel_id and message_id:
+        msg_data   = resp.json() if resp.status_code == 200 else {}
+        channel_id = msg_data.get("channel_id", "")
+        message_id = msg_data.get("id", "")
+
+        # ✅ / ❌ リアクションを追加（Bot Token が設定されている場合）
+        if DISCORD_BOT_TOKEN and channel_id and message_id:
+            headers = {"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+            for emoji_str in ["✅", "❌"]:
                 requests.put(
-                    f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/✅/@me",
-                    headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
+                    f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}"
+                    f"/reactions/{requests.utils.quote(emoji_str)}/@me",
+                    headers=headers,
                     timeout=10,
                 )
+
+        # story_message_ids.json / approved_slots.json を更新（redo時の追跡）
+        if message_id:
+            slot_id   = slot["id"]
+            today_str = date.today().strftime("%Y%m%d")
+
+            ids_path     = Path("./story_message_ids.json")
+            existing_ids = json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else {}
+            day_ids      = existing_ids.get(today_str, {})
+            if channel_id:
+                day_ids["channel_id"] = channel_id
+            day_ids[slot_id]          = message_id
+            existing_ids[today_str]   = day_ids
+            ids_path.write_text(json.dumps(existing_ids, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            slots_path     = Path("./approved_slots.json")
+            existing_slots = json.loads(slots_path.read_text(encoding="utf-8")) if slots_path.exists() else {}
+            day_slots      = existing_slots.get(today_str, {})
+            day_slots[slot_id]         = None  # 再承認待ちにリセット
+            existing_slots[today_str]  = day_slots
+            slots_path.write_text(json.dumps(existing_slots, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  📋 story_message_ids / approved_slots 更新（{slot_id}: {message_id}）")
 
         return True
     except Exception as e:
