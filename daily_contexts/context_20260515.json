@@ -1,0 +1,85 @@
+{
+  "date": "20260515",
+  "date_display": "2026/5/15（金曜日）",
+  "season": "spring",
+  "season_jp": "春",
+  "season_weather": "初夏。桜はすでに散り、若葉・新緑が眩しい。汗ばむ陽気。Tシャツ・薄手シャツ",
+  "casual_outfit": "Soft pastel oversized sweater, high-waisted denim shorts, white canvas sneakers, and a light crossbody bag.",
+  "room_wear": "pastel yellow cropped zip-up hoodie and matching wide-leg shorts set",
+  "pajamas": "light cotton pajama set in pale pink gingham-check pattern",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "convenience store bag and receipt on the floor near the desk",
+  "room_seasonal": "a small vase with fresh green leaves and white small flowers on the windowsill",
+  "day_jp": "金曜日",
+  "afternoon": {
+    "label": "講義2コマ",
+    "scene": "university campus end-of-week feeling, slightly tired but relieved",
+    "story_scene": "campus bench or cafeteria, end-of-week relief, bag beside her",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "バイト",
+    "scene": "leaving the cafe after work shift, tired but cute on the way home",
+    "outfit_type": "casual"
+  },
+  "reel_post_window": [
+    18,
+    21
+  ],
+  "has_reel": true,
+  "has_feed": false,
+  "feed_type": "none",
+  "feed_food_scene": "",
+  "feed_post_window": [],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "金曜日の朝 — 講義2コマに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "講義2コマ — campus bench or cafeteria, end-of-week relief, bag beside her"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "バイト — leaving the cafe after work shift, tired but cute on the way home"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "バイトが終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "Mirror selfie: smartphone held up covering the lower half of face — only sleepy eyes, messy bangs, and bedhead visible above the phone screen. Screen faintly reflecting the room."
+}
