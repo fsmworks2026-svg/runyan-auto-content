@@ -31,24 +31,15 @@ def check_and_post_video() -> bool:
     _jst   = ZoneInfo("Asia/Tokyo")
     _now   = datetime.now(_jst)
     _today = _now.strftime("%Y%m%d")
-
-    # reel_post_window チェック（投稿可否の判定のみ。処理はウィンドウ外でも実行する）
-    force_post    = os.environ.get("FORCE_POST", "").strip().lower() == "true"
-    within_window = force_post  # FORCE_POST=true なら常に投稿可
-    if not force_post:
-        _ctx_path = Path(f"./daily_contexts/context_{_today}.json")
-        if _ctx_path.exists():
-            _ctx = json.loads(_ctx_path.read_text(encoding="utf-8"))
-            pw   = _ctx.get("reel_post_window", [])
-            if len(pw) == 2:
-                within_window = pw[0] <= _now.hour < pw[1]
-                status = f"✅ reel_post_window 内（{pw[0]}〜{pw[1]}時）" if within_window else f"⏰ reel_post_window 外（{pw[0]}〜{pw[1]}時）— 保存のみ"
-                print(status)
-            else:
-                within_window = True  # window 未設定なら常に投稿可
-        else:
-            print(f"⚠️ daily_context なし（{_today}）。時間チェックをスキップして続行。")
-            within_window = True
+    # reel_post_window は参照のみ（ログ表示用）。投稿はブロックしない。
+    # cron が JST 10-22 限定なので、アップロードされたその日のうちに投稿するのが正しい動作。
+    _ctx_path = Path(f"./daily_contexts/context_{_today}.json")
+    if _ctx_path.exists():
+        _ctx = json.loads(_ctx_path.read_text(encoding="utf-8"))
+        pw   = _ctx.get("reel_post_window", [])
+        if len(pw) == 2:
+            in_window = pw[0] <= _now.hour < pw[1]
+            print(f"reel_post_window: {pw[0]}〜{pw[1]}時（現在 {_now.hour}時）{'✅ 内' if in_window else '⚠️ 外だが投稿続行'}（cron JST 10-22 が外枠）")
 
     # 最後に処理した動画のメッセージIDを読み込む
     state_path = Path("last_video_id.json")
@@ -105,11 +96,6 @@ def check_and_post_video() -> bool:
                     print(f"  💾 処理済み動画を保存: {processed_path.name}")
                     if webhook_url:
                         requests.post(webhook_url, json={"content": f"💾 動画処理完了・保存済み: {processed_path.name}"})
-
-                # 投稿ウィンドウ外の場合はここで終了（last_id は更新しない）
-                if not within_window:
-                    print("  ⏰ 投稿ウィンドウ外のため今回は保存のみ。次回ウィンドウ内で自動投稿します。")
-                    return False
 
                 # Instagram resumable upload で投稿
                 post_id = _post_reel_resumable(processed_path, caption, ig_user_id, page_token)
