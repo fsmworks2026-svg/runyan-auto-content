@@ -1203,8 +1203,33 @@ Output only the prompt, no explanation.""",
             json.dump(scenario, f, ensure_ascii=False, indent=2)
         print(f"  ✅ シナリオ: {scenario.get('title')}")
 
-        # 3. ストーリーズ画像生成（Discord への個別送信はスキップ）
-        print("\n[3/4] ストーリーズ画像生成")
+        # 3. リール/フィード(person)画像を先に生成（カジュアル服装参照を確定させる）
+        # ストーリーズ生成より前に実行することで、casual スロットの outfit 参照画像が揃う
+        reel_image_path = None
+        reel_video_prompt = ""
+        needs_outfit_ref = ctx.get("has_reel") or (ctx.get("has_feed") and ctx.get("feed_type") == "person")
+        if needs_outfit_ref:
+            label = "リール" if ctx.get("has_reel") else "フィード(person)"
+            print(f"\n[3/5] {label}画像生成（カジュアル服装参照を先に確定）")
+            reel_image_path = self._generate_reel_image(scenario, ctx["date"])
+            if reel_image_path:
+                scenario["reel_image_path"] = str(reel_image_path)
+                with open(scenario_path, "w", encoding="utf-8") as f:
+                    json.dump(scenario, f, ensure_ascii=False, indent=2)
+                if ctx.get("has_reel"):
+                    print("  📝 動画プロンプト生成中...")
+                    try:
+                        reel_video_prompt = self.generate_video_prompt(scenario)
+                    except Exception as e:
+                        print(f"  ⚠️ 動画プロンプト生成失敗: {e}")
+                        reel_video_prompt = f"{scenario.get('setting')} scene, natural movement, 9:16 vertical"
+            else:
+                print(f"  ⚠️ {label}画像生成失敗（ストーリーズは服装参照なしで生成）")
+        else:
+            print("\n[3/5] スキップ（リールなし・フィードfoodまたはnone）")
+
+        # 4. ストーリーズ画像生成（reel_output に服装参照画像があれば casual スロットが自動使用）
+        print("\n[4/5] ストーリーズ画像生成")
         story_images = gs.generate_all(target_date=tomorrow, notify_discord=False)
 
         # フィード画像生成（food タイプの場合のみブリーフィング時に生成）
@@ -1217,29 +1242,6 @@ Output only the prompt, no explanation.""",
                 print(f"  ✅ フィード画像: {feed_image_path.name}")
             else:
                 print("  ⚠️  フィード画像生成失敗（後で手動生成可）")
-        elif ctx.get("has_feed") and ctx.get("feed_type") == "person":
-            print("\n[フィード] person タイプ — リール画像を後で流用（今は生成不要）")
-
-        # 4. リール画像生成（リールがある日のみ）
-        reel_image_path = None
-        reel_video_prompt = ""
-        if ctx.get("has_reel"):
-            print("\n[4/4] リール画像生成")
-            reel_image_path = self._generate_reel_image(scenario, ctx["date"])
-            if reel_image_path:
-                print("  📝 動画プロンプト生成中...")
-                try:
-                    reel_video_prompt = self.generate_video_prompt(scenario)
-                except Exception as e:
-                    print(f"  ⚠️ 動画プロンプト生成失敗: {e}")
-                    reel_video_prompt = f"{scenario.get('setting')} scene, natural movement, 9:16 vertical"
-                scenario["reel_image_path"] = str(reel_image_path)
-                with open(scenario_path, "w", encoding="utf-8") as f:
-                    json.dump(scenario, f, ensure_ascii=False, indent=2)
-            else:
-                print("  ⚠️ リール画像生成失敗（Step2 で再生成可）")
-        else:
-            print("\n[4/4] スキップ（今日はリールなし）")
 
         # 5. ブリーフィングを Discord に一括送信してメッセージIDを保存
         print("\n[Discord] ブリーフィング送信")
@@ -1248,7 +1250,7 @@ Output only the prompt, no explanation.""",
             # ストーリーズ画像をスロット別に送信
             if story_images:
                 self._send_story_images_discord(story_images, ctx)
-            # リール画像を送信
+            # リール/フィード(person)画像を送信
             if reel_image_path:
                 self._send_reel_image_discord(reel_image_path, ctx["date"], ctx, scenario, reel_video_prompt)
             scenario["discord_message_id"] = message_id
@@ -1257,7 +1259,7 @@ Output only the prompt, no explanation.""",
             with open(scenario_path, "w", encoding="utf-8") as f:
                 json.dump(scenario, f, ensure_ascii=False, indent=2)
 
-        # 6. リールがある日だけ #video-uploads に動画アップロード依頼を送信
+        # リールがある日だけ #video-uploads に動画アップロード依頼を送信
         if ctx.get("has_reel"):
             print("\n[Discord] 動画アップロード依頼送信")
             self._notify_video_upload_request(ctx, scenario)
