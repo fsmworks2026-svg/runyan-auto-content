@@ -11,8 +11,10 @@
 import os
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone as _tz, timedelta as _td
 from pathlib import Path
+
+_JST = _tz(_td(hours=9))  # GitHub Actions (UTC) 環境でも JST 日時を正確に扱う
 from dotenv import load_dotenv
 from openai import OpenAI
 import io
@@ -379,7 +381,7 @@ Mood: {scenario.get('mood', 'casual')}
             # base64 デコードして画像ファイルとして保存
             import base64
             image_data = base64.b64decode(response.data[0].b64_json)
-            image_path = self.output_dir / f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{shot_index + 1}.png"
+            image_path = self.output_dir / f"image_{datetime.now(_JST).strftime('%Y%m%d_%H%M%S')}_{shot_index + 1}.png"
             # ベース参照画像フォルダへの誤書き込みを防ぐガード
             assert "キャラ画像" not in str(image_path), "ベース画像フォルダへの書き込みは禁止されています"
             with open(image_path, "wb") as f:
@@ -454,7 +456,7 @@ Mood: {scenario.get('mood', 'casual')}
                 if status == "completed":
                     video_url = status_data.get("video_url") or status_data.get("url")
                     video_res = requests.get(video_url, timeout=120)
-                    video_path = self.output_dir / f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+                    video_path = self.output_dir / f"video_{datetime.now(_JST).strftime('%Y%m%d_%H%M%S')}.mp4"
                     with open(video_path, "wb") as f:
                         f.write(video_res.content)
                     print(f"✅ 動画生成完了: {video_path}")
@@ -634,7 +636,7 @@ Mood: {scenario.get('mood', 'casual')}
     def run_scenario_mode(self):
         """シナリオのみ生成してDiscordに投稿・ファイル保存（毎朝自動実行）"""
         print("=" * 50)
-        print(f"📝 シナリオ確認モード開始 ({datetime.now()})")
+        print(f"📝 シナリオ確認モード開始 ({datetime.now(_JST).strftime('%Y-%m-%d %H:%M:%S JST')})")
         print("=" * 50)
 
         scenario = self.generate_scenario()
@@ -771,7 +773,7 @@ Output only the prompt, no explanation.""",
     def run_generate_mode(self):
         """保存済みシナリオからメイン画像1枚を生成してDiscordに通知"""
         print("=" * 50)
-        print(f"🎬 コンテンツ生成モード開始 ({datetime.now()})")
+        print(f"🎬 コンテンツ生成モード開始 ({datetime.now(_JST).strftime('%Y-%m-%d %H:%M:%S JST')})")
         print("=" * 50)
 
         # 保存済みシナリオを読み込み
@@ -796,14 +798,9 @@ Output only the prompt, no explanation.""",
 
         # リール投稿チェック
         # is_spot=True（"新規:" スポット投稿）はスケジュール外 → チェックしない
-        # 通常フロー（ブリーフィング・修正）は daily_context を参照して has_reel=False ならスキップ
+        # 通常フロー（ブリーフィング・修正）は scenario の has_reel を直接参照してスキップ判定
         if not scenario.get("is_spot", False):
-            from datetime import timezone as _tz, timedelta as _td
-            import daily_context as _dc
-            _jst   = _tz(_td(hours=9))
-            _today = datetime.now(_jst).date()
-            _ctx   = _dc.load_or_create(_today, openai_client=None)
-            if not _ctx.get("has_reel", True):
+            if not scenario.get("has_reel", True):
                 print("今日はリール投稿なし（スケジュール外）")
                 if DISCORD_WEBHOOK_URL:
                     requests.post(DISCORD_WEBHOOK_URL, json={
@@ -812,9 +809,7 @@ Output only the prompt, no explanation.""",
                 return
 
         # ブリーフィング時に生成済みのリール画像があればスキップ、なければ生成
-        from datetime import timezone as _tz2, timedelta as _td2
-        _jst2    = _tz2(_td2(hours=9))
-        _today2  = datetime.now(_jst2).strftime("%Y%m%d")
+        _today2  = datetime.now(_JST).strftime("%Y%m%d")
         reel_dir = Path("./reel_output")
         image_path = None
         for suffix in (".jpg", ".png"):
@@ -1168,8 +1163,6 @@ Output only the prompt, no explanation.""",
         import daily_context as dc
         import generate_stories as gs
 
-        from datetime import timezone as _tz
-        _JST     = _tz(timedelta(hours=9))
         target_date_str = os.environ.get("TARGET_DATE", "").strip()
         tomorrow = date.fromisoformat(target_date_str) if target_date_str else (datetime.now(_JST).date() + timedelta(days=1))
 
@@ -1388,7 +1381,7 @@ Output only the prompt, no explanation.""",
 
         # ファイル名を spot_{type}_{timestamp} に統一
         src = Path(image_path_str)
-        ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts  = datetime.now(_JST).strftime("%Y%m%d_%H%M%S")
         dst = spot_dir / f"spot_{content_type}_{ts}{src.suffix}"
         src.rename(dst)
         print(f"  💾 保存: {dst}")
@@ -1466,15 +1459,11 @@ Output only the prompt, no explanation.""",
     def run_redo_reel_mode(self, override_hint: str = "", target_date_str: str = ""):
         """リール画像を再生成してDiscordに送信する。"""
         import sys as _sys
-        from datetime import date as _date, timezone as _tz3, timedelta as _td3
 
-        _jst3 = _tz3(_td3(hours=9))
         if target_date_str:
-            from datetime import datetime as _dt3
-            target_dt = _dt3.strptime(target_date_str, "%Y-%m-%d")
-            date_str  = target_dt.strftime("%Y%m%d")
+            date_str = datetime.strptime(target_date_str, "%Y-%m-%d").strftime("%Y%m%d")
         else:
-            date_str = datetime.now(_jst3).strftime("%Y%m%d")
+            date_str = datetime.now(_JST).strftime("%Y%m%d")
 
         print(f"🔄 リール画像再生成: {date_str}" + (f" / hint: {override_hint}" if override_hint else ""))
 
