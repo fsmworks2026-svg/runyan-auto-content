@@ -56,11 +56,13 @@ def _build_outfit_text(slot: dict, ctx: dict) -> str:
         return ctx["pajamas"]
     if ot == "room":
         return ctx["room_wear"]
-    # casual: リール画像と衣装を一致させるため current_scenario.json の outfit を優先する
+    # casual: outfit_detail（Vision抽出済み詳細）→ outfit → casual_outfit の優先順
     scenario_path = Path("./current_scenario.json")
     if scenario_path.exists():
         try:
             sc = json.loads(scenario_path.read_text(encoding="utf-8"))
+            if sc.get("outfit_detail"):
+                return sc["outfit_detail"]
             if sc.get("outfit"):
                 return sc["outfit"]
         except Exception:
@@ -255,7 +257,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
                 (reel_dir / f"reel_{today_str}{s}").exists() for s in (".jpg", ".png")
             )
             outfit_ref_line = (
-                "2枚目の写真と完全に同じ服装・アクセサリーで生成すること。色・デザイン・素材感を忠実に再現すること。"
+                "2枚目の写真と完全に同じ服装・アクセサリーで生成すること。色・デザイン・素材感を忠実に再現すること。ただしポーズ・構図・小道具は2枚目と異なるものにすること。"
                 if _has_outfit_ref else
                 f"{outfit}を着ている。"
             )
@@ -309,13 +311,14 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     if room_image_path and room_image_path.exists():
         print(f"  🏠 部屋背景: {room_image_path.name}")
 
-    # casual スロット: リール画像を服装参照として追加
-    # pajamas 朝スロット: 前日夜画像をパジャマ参照として追加（事前検索済み）
+    # 服装参照画像の確定
+    # casual: 当日リール画像を服装参照として使用
+    # pajamas 朝スロット: 前日夜画像をパジャマ参照として使用
     outfit_ref_path = None
     if outfit_type == "casual":
         reel_dir = Path("./reel_output")
-        for suffix in (".jpg", ".png"):
-            candidate = reel_dir / f"reel_{today_str}{suffix}"
+        for _s in (".jpg", ".png"):
+            candidate = reel_dir / f"reel_{today_str}{_s}"
             if candidate.exists():
                 outfit_ref_path = candidate
                 print(f"  👗 服装参照: {candidate.name}")
