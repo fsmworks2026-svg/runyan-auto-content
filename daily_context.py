@@ -28,11 +28,21 @@ def _sg(season: str) -> str:
 
 SEASON_JP = {"spring": "春", "summer": "夏", "autumn": "秋", "winter": "冬"}
 
-SEASON_WEATHER = {
-    "spring": "暖かい。桜や新緑の季節。薄手のアウター・ニット・シャツ",
-    "summer": "暑い・蒸し暑い季節。半袖・ワンピース・サンダル",
-    "autumn": "過ごしやすい・少し肌寒い。ニット・ジャケット・ブーツ",
-    "winter": "寒い。ダウンコート・マフラー・ニット必須",
+# 月ごとの季節感・服装ヒント（season_weather としてコンテキスト・画像プロンプトに渡す）
+# 4季節より精度が高く、AIが誤った季節表現（例：5月に桜）を生成しにくくなる
+MONTH_WEATHER = {
+    1:  "真冬。厳しい寒さ。ダウンコート・マフラー・手袋。街は冬の静寂",
+    2:  "冬の終わり。梅の花がほころび始め。まだ寒いが春の気配がある",
+    3:  "春の訪れ。肌寒い日もあるが桜が咲き始め。薄手のコート・カーディガン",
+    4:  "春爛漫。桜が満開〜散り始め、新緑が芽吹く。暖かい。薄手のアウター",
+    5:  "初夏。桜はすでに散り、若葉・新緑が眩しい。汗ばむ陽気。Tシャツ・薄手シャツ",
+    6:  "梅雨。じめじめした蒸し暑さ。紫陽花（アジサイ）が咲く。傘が手放せない",
+    7:  "真夏。猛暑。夏祭り・花火大会シーズン。半袖・ワンピース・サンダル",
+    8:  "夏のピーク。夏休み・お盆。セミの声。夕立。半袖・サンダル",
+    9:  "残暑。朝夕は涼しくなり始め。彼岸花。秋の気配",
+    10: "秋。紅葉が始まる。過ごしやすい気温。ニット・ジャケット",
+    11: "晩秋。紅葉が見頃〜落ち葉。肌寒い。コート・マフラー",
+    12: "初冬。クリスマスシーズン。冷え込む。ダウン・厚手ニット",
 }
 
 
@@ -85,11 +95,20 @@ ROOM_CLUTTER = [
     "headphones resting on the desk next to the MacBook, cable loosely coiled",
 ]
 
-ROOM_SEASONAL_TOUCH = {
-    "spring": "a small vase with pink flowers on the windowsill",
-    "summer": "a small electric fan visible on the shelf, a cold drink sweating on the desk",
-    "autumn": "an autumn-leaf-print mug on the desk, a light knit blanket draped over the chair",
-    "winter": "an electric blanket on the bed, a hot drink in a white mug on the desk",
+# 月ごとの部屋の季節小物（room_seasonal としてコンテキスト・画像プロンプトに渡す）
+MONTH_ROOM_SEASONAL = {
+    1:  "an electric blanket on the bed, a hot drink in a white mug on the desk",
+    2:  "a small vase with plum blossoms on the windowsill, a warm cup of tea on the desk",
+    3:  "a small vase with cherry blossom branches on the windowsill",
+    4:  "a small vase with cherry blossoms or tulips on the windowsill, petals softly lit",
+    5:  "a small vase with fresh green leaves and white small flowers on the windowsill",
+    6:  "a small hydrangea (ajisai) in a vase on the windowsill",
+    7:  "a small electric fan on the shelf, an iced drink sweating on the desk, a wind chime",
+    8:  "a cold iced drink sweating on the desk, a small electric fan, sunflower in a vase",
+    9:  "a light knit blanket draped over the chair, a warm drink on the desk",
+    10: "small autumn leaves in a vase, an autumn-print mug on the desk",
+    11: "fallen leaves visible through the window, a warm knit blanket on the chair",
+    12: "a small Christmas ornament on the shelf, a hot drink in a white mug, fairy lights",
 }
 
 
@@ -340,7 +359,7 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
             "emoji":       "🌅",
             "outfit_type": "pajamas",
             "no_makeup":   True,
-            "post_window": [7, 9],
+            "post_window": [7, 11],
             "scene_hint":  f"{sched['day_jp']}の朝 — {sched['afternoon']['label']}に向けて準備中",
         },
         {
@@ -349,7 +368,7 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
             "emoji":       "☀️",
             "outfit_type": sched["afternoon"]["outfit_type"],
             "no_makeup":   False,
-            "post_window": [11, 13],
+            "post_window": [11, 18],
             # story_scene があればストーリーズ用シーンを優先（授業中自撮りを避ける）
             "scene_hint":  f"{sched['afternoon']['label']} — {sched['afternoon'].get('story_scene', sched['afternoon']['scene'])}",
         },
@@ -359,7 +378,7 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
             "emoji":       "🌆",
             "outfit_type": sched["evening"]["outfit_type"],
             "no_makeup":   False,
-            "post_window": [18, 20],
+            "post_window": [18, 22],
             "scene_hint":  f"{sched['evening']['label']} — {sched['evening']['scene']}",
         },
         {
@@ -378,7 +397,7 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
         "date_display":   f"{d.year}/{d.month}/{d.day}（{sched['day_jp']}）",
         "season":         season,
         "season_jp":      SEASON_JP[season],
-        "season_weather": SEASON_WEATHER[season],
+        "season_weather": MONTH_WEATHER[d.month],
         # 衣装
         "casual_outfit":  casual_outfit,
         "room_wear":      ROOM_WEAR[sg][wear_idx],
@@ -386,7 +405,7 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
         # 部屋
         "room_base":      ROOM_BASE,
         "room_clutter":   ROOM_CLUTTER[doy % len(ROOM_CLUTTER)],
-        "room_seasonal":  ROOM_SEASONAL_TOUCH[season],
+        "room_seasonal":  MONTH_ROOM_SEASONAL[d.month],
         # スケジュール
         "day_jp":         sched["day_jp"],
         "afternoon":      sched["afternoon"],
