@@ -74,6 +74,29 @@ jobs:
 
 
           # ══════════════════════════════════════════════════════════════════
+          # Part 0: ブリーフィング未実行チェック（cron 遅延フォールバック）
+          # JST 21:00 以降に翌日コンテキストが未生成なら runyan-briefing.yml を起動する
+          # ══════════════════════════════════════════════════════════════════
+          from datetime import datetime, timezone, timedelta, date as _date
+          _JST      = timezone(timedelta(hours=9))
+          _now_jst  = datetime.now(_JST)
+          _tomorrow = (_date.today() + timedelta(days=1)).strftime("%Y%m%d")
+
+          if _now_jst.hour >= 21:
+              ctx_file = Path(f"daily_contexts/context_{_tomorrow}.json")
+              if not ctx_file.exists():
+                  print(f"⚠️ JST {_now_jst.hour}時: 翌日({_tomorrow})のコンテキスト未生成 → ブリーフィングを起動")
+                  ok = trigger_workflow("runyan-briefing.yml")
+                  if ok:
+                      print("✅ runyan-briefing.yml を起動しました")
+                      notify_discord("⏰ ブリーフィング遅延を検知 → 自動リトライ中...")
+                  else:
+                      print("❌ runyan-briefing.yml 起動失敗")
+              else:
+                  print(f"✅ 翌日コンテキスト確認済み（{_tomorrow}）")
+
+
+          # ══════════════════════════════════════════════════════════════════
           # Part 1: ブリーフィング承認チェック（✅ / ❌ / 修正:）
           # discord_bot.py が処理済みなら discord_status は pending でないのでスキップされる
           # ══════════════════════════════════════════════════════════════════
