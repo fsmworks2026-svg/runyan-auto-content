@@ -181,6 +181,18 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     if outfit_type == "casual":
         room_image_path = None
 
+    # 朝パジャマ: 前日夜画像をパジャマ参照として事前検索（プロンプト生成前に確定する）
+    prev_night_ref_path = None
+    if outfit_type == "pajamas" and slot_id == "morning":
+        from datetime import timedelta as _td_pj
+        _today_dt    = date.fromisoformat(f"{today_str[:4]}-{today_str[4:6]}-{today_str[6:]}")
+        _yesterday   = (_today_dt - _td_pj(days=1)).strftime("%Y%m%d")
+        for suffix in (".jpg", ".png"):
+            candidate = OUTPUT_DIR / f"story_{_yesterday}_night{suffix}"
+            if candidate.exists():
+                prev_night_ref_path = candidate
+                break
+
     # パジャマスロットは日本語プロンプトで統一（背景を先に指定してアンカーにする）
     if outfit_type == "pajamas":
         hint = slot.get("scene_hint", "")
@@ -213,6 +225,12 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
         hint_line = f"\n追加指示: {hint}" if hint else ""
 
+        # 朝スロットで前日夜画像がある場合: 3枚目=パジャマ参照、ない場合: テキスト指定
+        if prev_night_ref_path:
+            pajamas_line = "3枚目の写真と完全に同じパジャマ・同じデザイン・同じ色を着ていること。"
+        else:
+            pajamas_line = f"{outfit}を着ている。"
+
         prompt = f"""2枚目の写真の部屋をそのまま背景として使うこと。家具・照明・色・インテリアは一切変えないこと。
 
 この部屋に、1枚目の写真と同じ人物を配置してください。
@@ -220,7 +238,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 ダークブラウンのセミロングヘア、ゆるいウェーブ、薄いエアリーな前髪。
 
 完全にすっぴん。化粧は一切なし。リップカラーなし・眉毛メイクなし・アイメイクなし。素肌そのまま。
-{outfit}を着ている。{time_context}。
+{pajamas_line}{time_context}。
 
 {pj_camera}{hint_line}
 顔はすっぴんなので、鼻の上から目の下にかけて写真の上にデジタルで重ねた2DのInstagram風の星スタンプが浮いている。肌に溶け込まず、写真の上にフラットに乗っている2Dグラフィックのスタンプ。
@@ -291,7 +309,8 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     if room_image_path and room_image_path.exists():
         print(f"  🏠 部屋背景: {room_image_path.name}")
 
-    # casual スロット: リール画像があれば服装参照として追加
+    # casual スロット: リール画像を服装参照として追加
+    # pajamas 朝スロット: 前日夜画像をパジャマ参照として追加（事前検索済み）
     outfit_ref_path = None
     if outfit_type == "casual":
         reel_dir = Path("./reel_output")
@@ -301,14 +320,19 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
                 outfit_ref_path = candidate
                 print(f"  👗 服装参照: {candidate.name}")
                 break
+    elif prev_night_ref_path:
+        outfit_ref_path = prev_night_ref_path
+        print(f"  🌙 前日夜パジャマ参照: {prev_night_ref_path.name}")
 
     try:
         char_file       = open(ref_path, "rb")
         room_file       = open(room_image_path, "rb") if room_image_path and room_image_path.exists() else None
         outfit_ref_file = open(outfit_ref_path, "rb") if outfit_ref_path else None
 
+        # 画像順序: [キャラ, 部屋背景, 服装参照] の順で渡す
+        # プロンプトの「2枚目=部屋」「3枚目=服装参照」と対応させる
         if room_file and outfit_ref_file:
-            images_input = [char_file, outfit_ref_file, room_file]
+            images_input = [char_file, room_file, outfit_ref_file]
         elif outfit_ref_file:
             images_input = [char_file, outfit_ref_file]
         elif room_file:
