@@ -113,7 +113,7 @@ def check_and_post_story():
     if force_slot:
         slot_to_post = next((s for s in ctx.get("story_slots", []) if s["id"] == force_slot), None)
         if not slot_to_post:
-            print(f"❌ FORCE_SLOT '{force_slot}' が見つかりません。morning/noon/evening/night のいずれかを指定してください。")
+            print(f"❌ FORCE_SLOT '{force_slot}' が見つかりません。morning/afternoon/evening/night のいずれかを指定してください。")
             sys.exit(1)
     else:
         for slot in ctx.get("story_slots", []):
