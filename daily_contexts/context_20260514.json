@@ -1,0 +1,92 @@
+{
+  "date": "20260514",
+  "date_display": "2026/5/14（木曜日）",
+  "season": "spring",
+  "season_jp": "春",
+  "season_weather": "暖かい。桜や新緑の季節。薄手のアウター・ニット・シャツ",
+  "casual_outfit": "Pastel pink oversized cardigan, white ribbed tank top, flowy beige culottes, stylish slip-on mules, delicate gold necklace.",
+  "room_wear": "soft pink spaghetti-strap camisole top, loose cream linen wide pants",
+  "pajamas": "soft lavender silk-look camisole and wide-leg shorts pajama set",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "small stuffed animal sitting at the corner of the bed",
+  "room_seasonal": "a small vase with pink flowers on the windowsill",
+  "day_jp": "木曜日",
+  "afternoon": {
+    "label": "ゼミ",
+    "scene": "university seminar room, relief and tiredness after the presentation",
+    "story_scene": "campus hallway after seminar presentation, relieved expression, notebook under arm",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "カフェ巡り",
+    "scene": "exploring a cozy new Tokyo cafe, latte art and warm interior",
+    "outfit_type": "casual",
+    "post_window": [
+      14,
+      18
+    ]
+  },
+  "reel_post_window": [
+    17,
+    20
+  ],
+  "has_reel": false,
+  "has_feed": true,
+  "feed_type": "person",
+  "feed_food_scene": "",
+  "feed_post_window": [
+    18,
+    22
+  ],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        9
+      ],
+      "scene_hint": "木曜日の朝 — ゼミに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        13
+      ],
+      "scene_hint": "ゼミ — campus hallway after seminar presentation, relieved expression, notebook under arm"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        20
+      ],
+      "scene_hint": "カフェ巡り — exploring a cozy new Tokyo cafe, latte art and warm interior"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "カフェ巡りが終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "3/4 side profile: face turned mostly away from camera, bangs falling over one eye, soft unfocused gaze into the distance. Face NOT directly facing the lens."
+}
