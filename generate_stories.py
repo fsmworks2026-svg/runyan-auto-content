@@ -229,7 +229,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
         # 朝スロットで前日夜画像がある場合: 3枚目=パジャマ参照、ない場合: テキスト指定
         if prev_night_ref_path:
-            pajamas_line = "3枚目の写真と完全に同じパジャマ・同じデザイン・同じ色を着ていること。"
+            pajamas_line = "3枚目の写真と完全に同じパジャマ・同じデザイン・同じ色を着ていること。ただしポーズ・構図・小道具は3枚目と異なるものにすること。"
         else:
             pajamas_line = f"{outfit}を着ている。"
 
