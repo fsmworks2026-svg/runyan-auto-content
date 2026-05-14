@@ -1,30 +1,26 @@
 {
-  "title": "週末のキャンパスでのひととき",
-  "scenario": "五月の暖かい日差しの中、るーにゃは大学の講義を2コマ受け終えて、少し疲れた様子でキャンパスを歩いている。友達とのランチの約束もないため、一人でカフェに寄ることにした。カフェでアイスラテを注文し、窓際の席に座る。疲れたけど、心地よい週末の始まりを感じている。授業のノートを見返しながら、次の週に向けた準備を始めるが、心の中ではリラックスしたい気持ちも。Instagramに投稿するための写真を撮るが、自然体でいることも忘れずに。",
-  "caption": "📚 #大学生 の週末。授業後のカフェタイムでホッと一息。#リラックスタイム #キャンパスライフ",
+  "title": "大学生の日常と一週間の終わり",
+  "scenario": "5月の暖かい金曜日。るーにゃは大学の講義を2コマ終えて少し疲れた様子だが、どこかほっとしている。カフェで一息つきながら、週末の予定について考える。本音トークでは、実は友達が少なくて週末の予定が空っぽだと打ち明けるが、それでも一人の時間を楽しめるようになった自分を少し誇らしく思っている。",
+  "caption": "金曜日の午後、少しお疲れモード。でも、今週もよく頑張った🌿 #大学生 #週末気分 #自分時間",
   "mood": "relatable",
-  "setting": "大学キャンパスとカフェ",
+  "setting": "大学のキャンパスとカフェ",
   "makeup_style": "natural",
   "photo_style": "selfie",
   "outfit": "Soft pastel oversized sweater, high-waisted denim shorts, white canvas sneakers, and a light crossbody bag.",
-  "key_dialogue": "「週末が来るとつい気が抜けちゃうよね、でもこれも大事なリフレッシュ」",
+  "key_dialogue": "「今週もお疲れさま、私。」",
   "save_reason": "コーディネート参考になる",
-  "share_element": "週末のリラックスした気持ちへの共感",
-  "interactive_element": "「あなたの週末のリラックス方法は？」",
-  "main_shot": "カフェの窓際でアイスラテを片手に持ちながら、自然光に包まれて微笑んでいる姿",
-  "best_posting_time": "18:00〜20:00。夕飯時にリラックスして見てもらえる時間帯。",
+  "share_element": "友達と「あ、わかる！」となる瞬間",
+  "interactive_element": "今週末、皆さんはどんな予定ですか？",
+  "main_shot": "カフェの窓際の席で、カップを片手に週末の予定を書き込むノートを開いている",
+  "best_posting_time": "18:00〜20:00。夕方以降のリラックスタイムに合わせて。",
   "hashtags": [
     "#るーにゃ",
     "#大学生",
-    "#週末",
-    "#カフェタイム",
-    "#リラックス"
+    "#カフェ時間",
+    "#週末"
   ],
   "has_reel": true,
   "has_feed": false,
   "feed_type": "none",
-  "reel_image_path": "reel_output/reel_20260515.jpg",
-  "discord_message_id": "1504191374503837826",
-  "discord_status": "pending",
-  "briefing_date": "20260515"
+  "reel_image_path": "reel_output/reel_20260515.jpg"
 }
