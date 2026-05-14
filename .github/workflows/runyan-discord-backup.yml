@@ -11,6 +11,10 @@ on:
     - cron: '0 21-23 * * *'  # UTC 21-23 = JST 06:00-08:00
   workflow_dispatch:
 
+concurrency:
+  group: discord-backup
+  cancel-in-progress: false  # 実行中の完了を待ってから次を開始（二重トリガー防止）
+
 permissions:
   contents: write
 
