@@ -186,7 +186,9 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         hint = slot.get("scene_hint", "")
 
         # scene_hint のキーワードで pj_style を決定（override_hint 対応）
-        if any(kw in hint for kw in ("ソファ", "リビング")):
+        if any(kw in hint for kw in ("洗面台", "洗面所", "バスタオル", "お風呂上がり", "washroom")):
+            pj_style = "washroom_mirror"
+        elif any(kw in hint for kw in ("ソファ", "リビング")):
             pj_style = "sofa_coffee"
         elif any(kw in hint for kw in ("鏡", "姿見")):
             pj_style = "mirror_selfie"
@@ -197,13 +199,22 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
         # pj_style に合わせて room_image_path を確定（ランダム選択時も背景と一致させる）
         suffix_pj = "night" if is_night else "morning"
-        if pj_style == "sofa_coffee":
+        if pj_style == "washroom_mirror":
+            room_image_path = Path("./部屋画像") / "washroom_mirror.png"
+        elif pj_style == "sofa_coffee":
             room_image_path = Path("./部屋画像") / f"living_sofa_{suffix_pj}.png"
         elif pj_style == "mirror_selfie":
             room_image_path = Path("./部屋画像") / f"living_mirror_{suffix_pj}.png"
 
         time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかり"
-        if pj_style == "bed_selfie":
+        if pj_style == "washroom_mirror":
+            pj_camera = (
+                "その子が洗面台の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。"
+                "お風呂上がりで、白いバスタオルを胸元でしっかり巻いている。"
+                "頭にはパステルカラーのヘアバンドをつけ、髪が濡れてしっとりしている。"
+                "肌はお風呂上がりのほんのり赤み。洗面台の暖かい照明。スマホが顔の下半分を隠している。"
+            )
+        elif pj_style == "bed_selfie":
             pj_camera = "その子がベッドに座り、スマホのインカメラで自撮りをしている。"
         elif pj_style == "mirror_selfie":
             pj_camera = "その子が部屋の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
