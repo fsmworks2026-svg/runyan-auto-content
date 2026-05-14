@@ -86,10 +86,10 @@ jobs:
           if reaction_res.status_code == 200:
               reactors = [u for u in reaction_res.json() if not u.get("bot")]
               if reactors:
-                  print(f"✅ リアクション検知（{reactors[0].get('username')}）→ コンテンツ生成を起動")
-                  ok = trigger_workflow("runyan-generate.yml")
+                  print(f"✅ リアクション検知（{reactors[0].get('username')}）→ ストーリーズ生成を起動")
+                  ok = trigger_workflow("runyan-briefing-stories.yml")
                   if ok:
-                      print("✅ runyan-generate.yml を起動しました")
+                      print("✅ runyan-briefing-stories.yml を起動しました")
                       scenario["discord_status"] = "approved"
                       scenario_path.write_text(
                           json.dumps(scenario, ensure_ascii=False, indent=2), encoding="utf-8"

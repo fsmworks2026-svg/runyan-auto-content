@@ -846,7 +846,7 @@ Output only the prompt, no explanation.""",
         print("=" * 50)
 
 
-    def _send_briefing_discord(self, ctx: dict, scenario: dict, story_images: list, feed_image_path=None) -> str | None:
+    def _send_briefing_discord(self, ctx: dict, scenario: dict, feed_image_path=None) -> str | None:
         """ブリーフィング情報を Discord に一括送信し、メッセージIDを返す"""
         pw = ctx["reel_post_window"]
         makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
@@ -917,7 +917,7 @@ Output only the prompt, no explanation.""",
             "title": f"📅 明日のるーにゃ — {ctx['date_display']}",
             "color": 0x7289DA,
             "fields": fields,
-            "footer": {"text": "✅ でコンテンツ確定 → 生成キュー開始（リール画像・ストーリーズ投稿）"},
+            "footer": {"text": "✅ でストーリーズ生成開始 | ❌ でスキップ"},
         }
 
         # フード画像がある場合は一緒に添付
@@ -1161,7 +1161,6 @@ Output only the prompt, no explanation.""",
         """前日21時実行：翌日のコンテキスト・シナリオ・ストーリーズ画像を一括生成してDiscordに投稿"""
         from datetime import date, timedelta
         import daily_context as dc
-        import generate_stories as gs
 
         target_date_str = os.environ.get("TARGET_DATE", "").strip()
         tomorrow = date.fromisoformat(target_date_str) if target_date_str else (datetime.now(_JST).date() + timedelta(days=1))
@@ -1216,7 +1215,7 @@ Output only the prompt, no explanation.""",
         needs_outfit_ref = ctx.get("has_reel") or (ctx.get("has_feed") and ctx.get("feed_type") == "person")
         if needs_outfit_ref:
             label = "リール" if ctx.get("has_reel") else "フィード(person)"
-            print(f"\n[3/5] {label}画像生成（カジュアル服装参照を先に確定）")
+            print(f"\n[3/3] {label}画像生成（カジュアル服装参照を先に確定）")
             reel_image_path = self._generate_reel_image(scenario, ctx["date"])
             if reel_image_path:
                 scenario["reel_image_path"] = str(reel_image_path)
@@ -1232,11 +1231,7 @@ Output only the prompt, no explanation.""",
             else:
                 print(f"  ⚠️ {label}画像生成失敗（ストーリーズは服装参照なしで生成）")
         else:
-            print("\n[3/5] スキップ（リールなし・フィードfoodまたはnone）")
-
-        # 4. ストーリーズ画像生成（reel_output に服装参照画像があれば casual スロットが自動使用）
-        print("\n[4/5] ストーリーズ画像生成")
-        story_images = gs.generate_all(target_date=tomorrow, notify_discord=False)
+            print("\n[3/3] スキップ（リールなし・フィードfoodまたはnone）")
 
         # フィード画像生成（food タイプの場合のみブリーフィング時に生成）
         feed_image_path = None
@@ -1254,12 +1249,9 @@ Output only the prompt, no explanation.""",
             print("\n[Discord] 送信済みのためスキップ — コンテンツ生成のみ完了")
         else:
             print("\n[Discord] ブリーフィング送信")
-            message_id = self._send_briefing_discord(ctx, scenario, story_images, feed_image_path=feed_image_path)
+            message_id = self._send_briefing_discord(ctx, scenario, feed_image_path=feed_image_path)
             if message_id:
-                # ストーリーズ画像をスロット別に送信
-                if story_images:
-                    self._send_story_images_discord(story_images, ctx)
-                # リール/フィード(person)画像を送信
+                # リール/フィード(person)画像を送信（✅承認後にストーリーズ生成）
                 if reel_image_path:
                     self._send_reel_image_discord(reel_image_path, ctx["date"], ctx, scenario, reel_video_prompt)
                 scenario["discord_message_id"] = message_id
@@ -1277,6 +1269,45 @@ Output only the prompt, no explanation.""",
 
         print("\n" + "=" * 55)
         print("✅ ブリーフィング完了 — Discord の ✅ を待っています")
+        print("=" * 55)
+
+    def run_briefing_stories_mode(self):
+        """briefing ✅承認後: ストーリーズ画像を生成してDiscordに送信"""
+        import daily_context as dc
+        import generate_stories as gs
+
+        # current_scenario.json から対象日付を取得
+        scenario_path = Path("./current_scenario.json")
+        if not scenario_path.exists():
+            print("❌ current_scenario.json が見つかりません。先にブリーフィングを実行してください")
+            return
+
+        scenario  = json.loads(scenario_path.read_text(encoding="utf-8"))
+        date_str  = scenario.get("briefing_date", "")  # 例: "20260515"
+        if not date_str:
+            print("❌ briefing_date が記録されていません")
+            return
+
+        target_date = datetime.strptime(date_str, "%Y%m%d").date()
+        print("=" * 55)
+        print(f"📱 ストーリーズ生成モード開始 → {target_date}")
+        print("=" * 55)
+
+        ctx = dc.load_or_create(target_date, openai_client=self.openai_client)
+        story_images = gs.generate_all(target_date=target_date, notify_discord=False)
+
+        if story_images:
+            self._send_story_images_discord(story_images, ctx)
+            print(f"\n✅ {len(story_images)} 枚のストーリーズをDiscordに送信しました")
+        else:
+            print("\n⚠️ ストーリーズ画像の生成に失敗しました")
+
+        # ステータスを承認済みに更新
+        scenario["discord_status"] = "stories_generated"
+        scenario_path.write_text(json.dumps(scenario, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        print("\n" + "=" * 55)
+        print("✅ ストーリーズ生成完了")
         print("=" * 55)
 
 
@@ -1529,6 +1560,8 @@ if __name__ == "__main__":
         generator.run_generate_mode()
     elif mode == "briefing":
         generator.run_briefing_mode()
+    elif mode == "briefing_stories":
+        generator.run_briefing_stories_mode()
     elif mode == "redo_reel":
         override_hint    = sys.argv[2] if len(sys.argv) > 2 else ""
         target_date_str  = sys.argv[3] if len(sys.argv) > 3 else ""
