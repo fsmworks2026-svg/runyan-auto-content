@@ -1165,10 +1165,21 @@ Output only the prompt, no explanation.""",
 
         target_date_str = os.environ.get("TARGET_DATE", "").strip()
         tomorrow = date.fromisoformat(target_date_str) if target_date_str else (datetime.now(_JST).date() + timedelta(days=1))
+        force     = os.environ.get("FORCE_BRIEFING", "").lower() == "true"
 
         print("=" * 55)
         print(f"📅 ブリーフィングモード開始 → {tomorrow}")
         print("=" * 55)
+
+        # 重複送信チェック：同日付のストーリーズが既にDiscordに送信済みならスキップ
+        # GitHub Actionsの cron 遅延で JST 深夜に実行 → 翌朝の21時スケジュールで再実行される場合の二重通知を防ぐ
+        date_key   = tomorrow.strftime("%Y%m%d")
+        ids_path   = Path("./story_message_ids.json")
+        _ids       = json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else {}
+        _day_ids   = _ids.get(date_key, {})
+        already_notified = (len(_day_ids) > 1) and not force  # channel_id 以外のスロットIDがあれば送信済み
+        if already_notified:
+            print(f"⚠️ {date_key} は既にDiscord送信済みです（FORCE_BRIEFING=true で強制再送可）")
 
         # 1. 日次コンテキスト生成（翌日分）
         print("\n[1/3] 日次コンテキスト生成")
@@ -1239,27 +1250,30 @@ Output only the prompt, no explanation.""",
                 print("  ⚠️  フィード画像生成失敗（後で手動生成可）")
 
         # 5. ブリーフィングを Discord に一括送信してメッセージIDを保存
-        print("\n[Discord] ブリーフィング送信")
-        message_id = self._send_briefing_discord(ctx, scenario, story_images, feed_image_path=feed_image_path)
-        if message_id:
-            # ストーリーズ画像をスロット別に送信
-            if story_images:
-                self._send_story_images_discord(story_images, ctx)
-            # リール/フィード(person)画像を送信
-            if reel_image_path:
-                self._send_reel_image_discord(reel_image_path, ctx["date"], ctx, scenario, reel_video_prompt)
-            scenario["discord_message_id"] = message_id
-            scenario["discord_status"]     = "pending"
-            scenario["briefing_date"]      = ctx["date"]
-            with open(scenario_path, "w", encoding="utf-8") as f:
-                json.dump(scenario, f, ensure_ascii=False, indent=2)
-
-        # リールがある日だけ #video-uploads に動画アップロード依頼を送信
-        if ctx.get("has_reel"):
-            print("\n[Discord] 動画アップロード依頼送信")
-            self._notify_video_upload_request(ctx, scenario)
+        if already_notified:
+            print("\n[Discord] 送信済みのためスキップ — コンテンツ生成のみ完了")
         else:
-            print("\n[スキップ] 今日はリールなし → 動画依頼なし")
+            print("\n[Discord] ブリーフィング送信")
+            message_id = self._send_briefing_discord(ctx, scenario, story_images, feed_image_path=feed_image_path)
+            if message_id:
+                # ストーリーズ画像をスロット別に送信
+                if story_images:
+                    self._send_story_images_discord(story_images, ctx)
+                # リール/フィード(person)画像を送信
+                if reel_image_path:
+                    self._send_reel_image_discord(reel_image_path, ctx["date"], ctx, scenario, reel_video_prompt)
+                scenario["discord_message_id"] = message_id
+                scenario["discord_status"]     = "pending"
+                scenario["briefing_date"]      = ctx["date"]
+                with open(scenario_path, "w", encoding="utf-8") as f:
+                    json.dump(scenario, f, ensure_ascii=False, indent=2)
+
+            # リールがある日だけ #video-uploads に動画アップロード依頼を送信
+            if ctx.get("has_reel"):
+                print("\n[Discord] 動画アップロード依頼送信")
+                self._notify_video_upload_request(ctx, scenario)
+            else:
+                print("\n[スキップ] 今日はリールなし → 動画依頼なし")
 
         print("\n" + "=" * 55)
         print("✅ ブリーフィング完了 — Discord の ✅ を待っています")
