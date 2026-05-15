@@ -292,8 +292,8 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         if emoji == "✅":
             print("  → コンテンツ生成を起動します")
             if approve_briefing():
-                ok = trigger_workflow("runyan-generate.yml")
-                print(f"  runyan-generate.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
+                ok = trigger_workflow("runyan-briefing-stories.yml")
+                print(f"  runyan-briefing-stories.yml: {'✅ 起動成功' if ok else '❌ 起動失敗'}")
         elif emoji == "❌":
             print("  → 今日のコンテンツをスキップします")
             skip_briefing()
