@@ -27,6 +27,6 @@
     "morning": null,
     "afternoon": true,
     "evening": true,
-    "night": null
+    "night": true
   }
 }
