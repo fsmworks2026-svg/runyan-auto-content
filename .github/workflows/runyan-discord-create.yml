@@ -102,4 +102,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add last_command_id.json
-          git diff --staged --quiet || (git commit -m "chore: Discord コマンド処理済みIDを更新" && git pull --rebase && git push)
+          git diff --staged --quiet || (git commit -m "chore: Discord コマンド処理済みIDを更新" && for i in 1 2 3; do git pull --rebase && git push && break || sleep 10; done)

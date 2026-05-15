@@ -15,6 +15,10 @@ on:
         required: false
         default: ''
 
+concurrency:
+  group: redo-reel
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -53,4 +57,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add reel_output/ || true
           git add reel_message_ids.json || true
-          git diff --staged --quiet || (git commit -m "chore: リール画像再生成" && git pull --rebase && git push)
+          git diff --staged --quiet || (git commit -m "chore: リール画像再生成" && for i in 1 2 3; do git pull --rebase && git push && break || sleep 10; done)
