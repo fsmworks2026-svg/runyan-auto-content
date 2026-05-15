@@ -10,7 +10,7 @@ import base64
 import json
 import requests
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from openai import OpenAI
 from strip_metadata import strip_image
@@ -115,11 +115,11 @@ def generate_feed_image(ctx: dict, reel_image_path: str | Path | None = None) ->
 
 def pick_feed_caption(ctx: dict) -> str:
     """フィード投稿のキャプションを返す"""
-    from datetime import date
+    _JST = timezone(timedelta(hours=9))
     feed_type = ctx.get("feed_type", "none")
 
     if feed_type == "food":
-        doy = date.today().timetuple().tm_yday
+        doy = datetime.now(_JST).date().timetuple().tm_yday
         return FOOD_CAPTIONS[doy % len(FOOD_CAPTIONS)]
 
     # person: シナリオのキャプションを流用
@@ -175,9 +175,10 @@ def send_discord_feed(image_path: Path, ctx: dict, caption: str = "") -> bool:
 if __name__ == "__main__":
     import sys
     import daily_context as dc
-    from datetime import date
 
-    target = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
+    _jst = timezone(timedelta(hours=9))
+    target_arg = sys.argv[1] if len(sys.argv) > 1 else ""
+    target = datetime.fromisoformat(target_arg).date() if target_arg else datetime.now(_jst).date()
     ctx    = dc.load_or_create(target, openai_client=_get_client())
 
     print(f"フィード設定: has_feed={ctx['has_feed']}, feed_type={ctx['feed_type']}")

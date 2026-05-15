@@ -8,7 +8,7 @@
 import json
 import random
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 
 CONTEXT_DIR = Path("./daily_contexts")
 CONTEXT_DIR.mkdir(exist_ok=True)
@@ -425,7 +425,8 @@ def build_daily_context(target_date: date, openai_client=None) -> dict:
 
 def load_or_create(target_date: date = None, openai_client=None) -> dict:
     """コンテキストを返す。ファイルがあればキャッシュ、なければ生成して保存"""
-    d    = target_date or (date.today() + timedelta(days=1))
+    _JST = timezone(timedelta(hours=9))
+    d    = target_date or (datetime.now(_JST).date() + timedelta(days=1))
     path = CONTEXT_DIR / f"context_{d.strftime('%Y%m%d')}.json"
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
@@ -436,6 +437,7 @@ def load_or_create(target_date: date = None, openai_client=None) -> dict:
 
 if __name__ == "__main__":
     import sys
-    target = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today() + timedelta(days=1)
+    _JST = timezone(timedelta(hours=9))
+    target = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else datetime.now(_JST).date() + timedelta(days=1)
     ctx = build_daily_context(target)
     print(json.dumps(ctx, ensure_ascii=False, indent=2))

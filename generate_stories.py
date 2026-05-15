@@ -557,5 +557,5 @@ def generate_all(target_date: date = None, notify_discord: bool = True) -> list[
 
 if __name__ == "__main__":
     import sys
-    target = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
+    target = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else datetime.now(_JST).date()
     generate_all(target_date=target, notify_discord=True)

@@ -172,11 +172,12 @@ def _find_feed_image(ctx: dict) -> Path | None:
         if p.exists():
             return p
 
-    # person タイプ: generated_content の最新 JPEG を使用
-    gen_dir = Path("./generated_content")
-    jpgs = sorted(gen_dir.glob("*.jpg"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if jpgs:
-        return jpgs[0]
+    # person タイプ: reel_output のリール画像を流用
+    reel_dir = Path("./reel_output")
+    for suffix in (".jpg", ".png"):
+        p = reel_dir / f"reel_{today_str}{suffix}"
+        if p.exists():
+            return p
 
     return None
 
