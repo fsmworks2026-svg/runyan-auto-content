@@ -1,26 +1,30 @@
 {
-  "title": "大学生の日常と一週間の終わり",
-  "scenario": "5月の暖かい金曜日。るーにゃは大学の講義を2コマ終えて少し疲れた様子だが、どこかほっとしている。カフェで一息つきながら、週末の予定について考える。本音トークでは、実は友達が少なくて週末の予定が空っぽだと打ち明けるが、それでも一人の時間を楽しめるようになった自分を少し誇らしく思っている。",
-  "caption": "金曜日の午後、少しお疲れモード。でも、今週もよく頑張った🌿 #大学生 #週末気分 #自分時間",
+  "title": "初夏の買い物デート",
+  "scenario": "今日は気分転換にショッピングモールへ。カラフルな洋服を見たり、カフェで一息ついたり。歩き疲れたところで、ふと大人っぽいコーデに憧れたり。でも、店員さんに話しかけられてちょっとタジタジ。そんな自分も含めて楽しむ一日。",
+  "caption": "#ショッピングコーデ #大人っぽい #るーにゃの日常\n暖かい季節にぴったりなコーディネートを探し中。みんなはどんな夏服が好き？",
   "mood": "relatable",
-  "setting": "大学のキャンパスとカフェ",
+  "setting": "ショッピングモールとカフェ",
   "makeup_style": "natural",
   "photo_style": "selfie",
-  "outfit": "Soft pastel oversized sweater, high-waisted denim shorts, white canvas sneakers, and a light crossbody bag.",
-  "key_dialogue": "「今週もお疲れさま、私。」",
+  "outfit": "Pastel oversized cardigan, white graphic tee, high-waisted denim shorts, ankle boots, and a crossbody bag.",
+  "key_dialogue": "「この服、似合ってるかな？」",
   "save_reason": "コーディネート参考になる",
-  "share_element": "友達と「あ、わかる！」となる瞬間",
-  "interactive_element": "今週末、皆さんはどんな予定ですか？",
-  "main_shot": "カフェの窓際の席で、カップを片手に週末の予定を書き込むノートを開いている",
-  "best_posting_time": "18:00〜20:00。夕方以降のリラックスタイムに合わせて。",
+  "share_element": "思わず共感してしまう「店員さんに話しかけられて焦る」瞬間",
+  "interactive_element": "「あなたはショッピング派？それともカフェ派？」という質問を投げかける",
+  "main_shot": "ショッピングモールの大きな鏡の前で、試着したブラウスをチェックしているシーン",
+  "best_posting_time": "15:00〜17:00、午後の休憩時間にぴったり",
   "hashtags": [
     "#るーにゃ",
     "#大学生",
-    "#カフェ時間",
-    "#週末"
+    "#ショッピング",
+    "#カフェ巡り",
+    "#おしゃれさんと繋がりたい"
   ],
   "has_reel": true,
   "has_feed": false,
   "feed_type": "none",
-  "reel_image_path": "reel_output/reel_20260515.jpg"
+  "reel_image_path": "reel_output/reel_20260516.jpg",
+  "discord_message_id": "1504821527680385227",
+  "discord_status": "pending",
+  "briefing_date": "20260516"
 }
