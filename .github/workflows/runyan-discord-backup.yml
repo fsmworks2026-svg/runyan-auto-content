@@ -210,11 +210,22 @@ jobs:
 
           messages = res.json()
           STORY_REDO = {"朝作り直し:": "morning", "昼作り直し:": "afternoon", "夕方作り直し:": "evening", "夜作り直し:": "night"}
+          DISCORD_EPOCH = 1420070400000  # Discord スノーフレーク基準時刻 (ms)
 
           for msg in reversed(messages):
               if msg.get("author", {}).get("bot"):
                   continue
               if int(msg["id"]) <= int(last_id):
+                  continue
+
+              # 60分以上古いメッセージは処理せず last_id だけ進める
+              # （git push 競合で last_command_id が保存されなかった場合のループ防止）
+              import time
+              msg_age_min = (time.time() * 1000 - ((int(msg["id"]) >> 22) + DISCORD_EPOCH)) / 60000
+              if msg_age_min > 60:
+                  print(f"古いメッセージをスキップ（{msg_age_min:.0f}分前）: {msg.get('content','')[:30]}")
+                  state["last_id"] = msg["id"]
+                  state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
                   continue
 
               content = msg.get("content", "").strip().replace("：", ":")  # 全角コロンを半角に統一
@@ -472,4 +483,4 @@ jobs:
           [ -f approved_slots.json ] && git add approved_slots.json || true
           [ -f story_message_ids.json ] && git add story_message_ids.json || true
           [ -f spot_pending.json ] && git add spot_pending.json || true
-          git diff --staged --quiet || (git commit -m "chore: Discordバックアップポーリング結果を更新" && git pull --rebase && git push)
+          git diff --staged --quiet || (git commit -m "chore: Discordバックアップポーリング結果を更新" && for i in 1 2 3; do git pull --rebase && git push && break || sleep 10; done)
