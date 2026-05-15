@@ -22,6 +22,10 @@ from strip_metadata import strip_image
 
 _JST = timezone(timedelta(hours=9))
 
+# ミラーセルフィーで背面が映る際の機種・色を統一
+RUNYAN_IPHONE_JP = "iPhone 16（ピンク）"
+RUNYAN_IPHONE_EN = "iPhone 16 in Pink"
+
 def _today_jst() -> date:
     """GitHub Actions (UTC) / ローカル共通で JST の今日を返す"""
     return datetime.now(_JST).date()
@@ -154,7 +158,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
     elif outfit_type == "room":
         room_style = random.choice(["mirror", "sofa"])
         if room_style == "mirror":
-            camera_text  = "\nMirror selfie. Character standing directly in front of the full-length mirror, arm raised holding phone toward mirror. Phone back covers upper face in reflection.\n"
+            camera_text  = f"\nMirror selfie. Character standing directly in front of the full-length mirror, arm raised holding {RUNYAN_IPHONE_EN} toward mirror. The back of the {RUNYAN_IPHONE_EN} covers upper face in reflection.\n"
             conceal_text = ""
         else:
             camera_text  = "\nFront camera selfie sitting on the sofa. Arm extended toward camera. Slightly downward angle. Relaxed casual pose on couch.\n"
@@ -209,15 +213,15 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
         time_context = "夜寝る前の雰囲気、暖かいランプの明かり" if is_night else "朝起きたばかり"
         if pj_style == "washroom_mirror":
             pj_camera = (
-                "その子が洗面台の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。"
+                f"その子が洗面台の鏡の前に立ち、{RUNYAN_IPHONE_JP}を持ち上げてミラーセルフィーを撮っている。"
                 "お風呂上がりで、白いバスタオルを胸元でしっかり巻いている。"
                 "頭にはパステルカラーのヘアバンドをつけ、髪が濡れてしっとりしている。"
-                "肌はお風呂上がりのほんのり赤み。洗面台の暖かい照明。スマホが顔の下半分を隠している。"
+                f"肌はお風呂上がりのほんのり赤み。洗面台の暖かい照明。{RUNYAN_IPHONE_JP}が顔の下半分を隠している。"
             )
         elif pj_style == "bed_selfie":
             pj_camera = "その子がベッドに座り、スマホのインカメラで自撮りをしている。"
         elif pj_style == "mirror_selfie":
-            pj_camera = "その子が部屋の鏡の前に立ち、スマホを持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
+            pj_camera = f"その子が部屋の鏡の前に立ち、{RUNYAN_IPHONE_JP}を持ち上げてミラーセルフィーを撮っている。鏡のフレームが画角の端に見える。"
         else:  # sofa_coffee
             if is_night:
                 pj_camera = "その子がリビングのソファに座り、夜のリラックスタイムにスマホのインカメラで自撮りをしている。暖かい間接照明の雰囲気。"
@@ -245,7 +249,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 頭にはパステルカラーのヘアバンドをつけ、髪が濡れてしっとりしている。
 肌はお風呂上がりのほんのり赤み。
 
-洗面台の鏡の前に立ち、スマホを鏡に向けて撮影している。スマホが顔の下半分を隠している。{hint_line}
+洗面台の鏡の前に立ち、{RUNYAN_IPHONE_JP}を鏡に向けて撮影している。{RUNYAN_IPHONE_JP}が顔の下半分を隠している。{hint_line}
 顔はすっぴんなので、鼻の上から目の下にかけて写真の上にデジタルで重ねた2DのInstagram風の星スタンプが浮いている。肌に溶け込まず、写真の上にフラットに乗っている2Dグラフィックのスタンプ。
 
 フォトリアリスティック。縦9:16。Instagramストーリーズ。"""
@@ -293,7 +297,7 @@ def generate_story_image(slot: dict, ctx: dict, today_str: str, target_date: dat
 
         else:  # room（ミラー or ソファ）
             room_camera = (
-                "部屋の姿見の前に立ち、スマホを鏡に向けてミラーセルフィーを撮っている。スマホが顔の上部を自然に隠す。鏡のフレームが画角の端に見える。"
+                f"部屋の姿見の前に立ち、{RUNYAN_IPHONE_JP}を鏡に向けてミラーセルフィーを撮っている。{RUNYAN_IPHONE_JP}が顔の上部を自然に隠す。鏡のフレームが画角の端に見える。"
                 if room_style == "mirror" else
                 "ソファに座ってスマホのインカメラで自撮りをしている。腕を少し伸ばして。リラックスしたカジュアルなポーズ。"
             )
