@@ -1170,13 +1170,17 @@ Output only the prompt, no explanation.""",
         print(f"📅 ブリーフィングモード開始 → {tomorrow}")
         print("=" * 55)
 
-        # 重複送信チェック：同日付のストーリーズが既にDiscordに送信済みならスキップ
-        # GitHub Actionsの cron 遅延で JST 深夜に実行 → 翌朝の21時スケジュールで再実行される場合の二重通知を防ぐ
-        date_key   = tomorrow.strftime("%Y%m%d")
-        ids_path   = Path("./story_message_ids.json")
-        _ids       = json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else {}
-        _day_ids   = _ids.get(date_key, {})
-        already_notified = (len(_day_ids) > 1) and not force  # channel_id 以外のスロットIDがあれば送信済み
+        # 重複送信チェック：同日付のブリーフィングが既にDiscordに送信済みならスキップ
+        # 新フロー（2段階）ではストーリーズ生成前にブリーフィングが確定するため
+        # current_scenario.json の briefing_date + discord_status で判定する
+        date_key      = tomorrow.strftime("%Y%m%d")
+        _sent_statuses = ("pending", "approved", "stories_generated")
+        _existing      = json.loads(scenario_path.read_text(encoding="utf-8")) if scenario_path.exists() else {}
+        already_notified = (
+            not force
+            and _existing.get("briefing_date") == date_key
+            and _existing.get("discord_status") in _sent_statuses
+        )
         if already_notified:
             print(f"⚠️ {date_key} は既にDiscord送信済みです（FORCE_BRIEFING=true で強制再送可）")
 
