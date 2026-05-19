@@ -82,15 +82,19 @@ jobs:
           # JST 21:00 以降に翌日コンテキストが未生成なら runyan-briefing.yml を起動する
           # ══════════════════════════════════════════════════════════════════
           from datetime import datetime, timezone, timedelta, date as _date
-          _JST      = timezone(timedelta(hours=9))
-          _now_jst  = datetime.now(_JST)
-          _tomorrow = (_date.today() + timedelta(days=1)).strftime("%Y%m%d")
+          _JST         = timezone(timedelta(hours=9))
+          _now_jst     = datetime.now(_JST)
+          # JST基準で翌日を計算（UTC の _date.today() では日付変更後にズレる）
+          _tomorrow     = (_now_jst.date() + timedelta(days=1)).strftime("%Y%m%d")
+          _tomorrow_iso = (_now_jst.date() + timedelta(days=1)).isoformat()  # target_date 用
 
           if _now_jst.hour >= 21:
               ctx_file = Path(f"daily_contexts/context_{_tomorrow}.json")
               if not ctx_file.exists():
                   print(f"⚠️ JST {_now_jst.hour}時: 翌日({_tomorrow})のコンテキスト未生成 → ブリーフィングを起動")
-                  ok = trigger_workflow("runyan-briefing.yml")
+                  # target_date を明示指定: バックアップが起動したワークフローが日付変更後に
+                  # 実行されても翌々日に誤って生成されないようにする
+                  ok = trigger_workflow("runyan-briefing.yml", {"target_date": _tomorrow_iso})
                   if ok:
                       print("✅ runyan-briefing.yml を起動しました")
                       notify_discord("⏰ ブリーフィング遅延を検知 → 自動リトライ中...")
