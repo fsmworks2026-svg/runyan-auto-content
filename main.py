@@ -1173,7 +1173,8 @@ Output only the prompt, no explanation.""",
         # 重複送信チェック：同日付のブリーフィングが既にDiscordに送信済みならスキップ
         # 新フロー（2段階）ではストーリーズ生成前にブリーフィングが確定するため
         # current_scenario.json の briefing_date + discord_status で判定する
-        date_key      = tomorrow.strftime("%Y%m%d")
+        scenario_path  = Path("./current_scenario.json")
+        date_key       = tomorrow.strftime("%Y%m%d")
         _sent_statuses = ("pending", "approved", "stories_generated")
         _existing      = json.loads(scenario_path.read_text(encoding="utf-8")) if scenario_path.exists() else {}
         already_notified = (
