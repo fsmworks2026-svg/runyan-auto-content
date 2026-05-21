@@ -60,7 +60,7 @@
     "night": null
   },
   "20260522": {
-    "morning": null,
+    "morning": true,
     "afternoon": null,
     "evening": null,
     "night": null
