@@ -77,9 +77,9 @@
     "night": true
   },
   "20260525": {
-    "morning": null,
-    "afternoon": null,
-    "evening": null,
-    "night": null
+    "morning": true,
+    "afternoon": true,
+    "evening": true,
+    "night": true
   }
 }
