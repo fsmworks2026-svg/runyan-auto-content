@@ -1,0 +1,88 @@
+{
+  "date": "20260525",
+  "date_display": "2026/5/25（月曜日）",
+  "season": "spring",
+  "season_jp": "春",
+  "season_weather": "初夏。桜はすでに散り、若葉・新緑が眩しい。汗ばむ陽気。Tシャツ・薄手シャツ",
+  "casual_outfit": "Pastel oversized cardigan, white graphic tee, high-waisted denim shorts, colorful canvas sneakers, straw crossbody bag.",
+  "room_wear": "pastel yellow cropped zip-up hoodie and matching wide-leg shorts set",
+  "pajamas": "light cotton pajama set in pale pink gingham-check pattern",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "empty coffee mug and phone on charging cable beside the MacBook",
+  "room_seasonal": "a small vase with fresh green leaves and white small flowers on the windowsill",
+  "day_jp": "月曜日",
+  "afternoon": {
+    "label": "講義2コマ",
+    "scene": "university classroom or campus corridor after two lectures",
+    "story_scene": "campus cafeteria during lunch break between lectures, phone on table",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "バイト",
+    "scene": "leaving the cafe after work shift, tired but cute on the way home",
+    "outfit_type": "casual"
+  },
+  "reel_post_window": [
+    13,
+    16
+  ],
+  "has_reel": false,
+  "has_feed": true,
+  "feed_type": "person",
+  "feed_food_scene": "",
+  "feed_post_window": [
+    18,
+    22
+  ],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "月曜日の朝 — 講義2コマに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "講義2コマ — campus cafeteria during lunch break between lectures, phone on table"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "バイト — leaving the cafe after work shift, tired but cute on the way home"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "バイトが終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "Lying in bed: white fluffy duvet pulled up to the nose — only half-open tired eyes and disheveled bangs peek out above the blanket edge. Warm ambient lamp light."
+}
