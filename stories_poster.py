@@ -41,9 +41,9 @@ def post_story_image(image_path: Path, ig_user_id: str, page_token: str, public_
     container_id = res.json()["id"]
     print(f"  コンテナID: {container_id}")
 
-    # 2. FINISHED 待機（最大3分）
+    # 2. FINISHED 待機（最大10分）
     print("  ⏳ Instagram 処理待機中...")
-    for i in range(18):
+    for i in range(60):
         time.sleep(10)
         st = requests.get(
             f"https://graph.facebook.com/v25.0/{container_id}",

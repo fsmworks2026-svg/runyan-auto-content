@@ -59,9 +59,9 @@ def post_feed_image(image_path: Path, caption: str, ig_user_id: str, page_token:
         raise Exception(f"バイナリ送信失敗: {up_res.status_code} {up_res.text}")
     print("  ✅ バイナリ送信完了")
 
-    # 3. FINISHED 待機（最大3分）
+    # 3. FINISHED 待機（最大10分）
     print("  ⏳ Instagram 処理待機中...")
-    for i in range(18):
+    for i in range(60):
         time.sleep(10)
         st_res = requests.get(
             f"https://graph.facebook.com/v25.0/{container_id}",
