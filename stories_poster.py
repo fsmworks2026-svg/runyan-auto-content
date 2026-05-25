@@ -41,29 +41,19 @@ def post_story_image(image_path: Path, ig_user_id: str, page_token: str, public_
     container_id = res.json()["id"]
     print(f"  コンテナID: {container_id}")
 
-    # 2. FINISHED 待機（最大10分）
-    print("  ⏳ Instagram 処理待機中...")
-    for i in range(60):
-        time.sleep(10)
-        st = requests.get(
-            f"https://graph.facebook.com/v25.0/{container_id}",
-            params={"fields": "status_code", "access_token": page_token},
-        ).json()
-        status = st.get("status_code", "")
-        print(f"    ステータス: {status} ({i + 1}/18)")
-        if status == "FINISHED":
-            break
-        if status == "ERROR":
-            raise Exception(f"コンテナエラー: {st}")
-    else:
-        raise Exception("コンテナ処理タイムアウト（3分超過）")
-
-    # 3. 投稿
+    # 2. 投稿（Stories は image_url 方式のため status_code ポーリング不要。
+    #    コンテナ作成直後に media_publish を呼ぶ。失敗時は最大3回リトライ。）
     print("  🚀 Instagram Stories に投稿中...")
-    pub_res = requests.post(
-        f"https://graph.facebook.com/v25.0/{ig_user_id}/media_publish",
-        params={"creation_id": container_id, "access_token": page_token},
-    )
+    pub_res = None
+    for attempt in range(3):
+        pub_res = requests.post(
+            f"https://graph.facebook.com/v25.0/{ig_user_id}/media_publish",
+            params={"creation_id": container_id, "access_token": page_token},
+        )
+        if pub_res.status_code == 200:
+            break
+        print(f"  ⚠️ 投稿リトライ（{attempt + 1}/3）: {pub_res.status_code} {pub_res.text}")
+        time.sleep(10)
     if pub_res.status_code != 200:
         raise Exception(f"投稿失敗: {pub_res.status_code} {pub_res.text}")
 
