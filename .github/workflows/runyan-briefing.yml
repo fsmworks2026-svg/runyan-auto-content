@@ -1,9 +1,12 @@
 name: Runyan - 前日ブリーフィング（21時）
 
 on:
-  schedule:
-    # UTC 6:00 = JST 15:00。GitHub Actions は約6-7時間遅延するため、遅延後 JST 21:00〜22:00 に実行される
-    - cron: '0 6 * * *'
+  # schedule:
+
+  #   # UTC 6:00 = JST 15:00。GitHub Actions は約6-7時間遅延するため、遅延後 JST 21:00〜22:00 に実行される
+
+  #   - cron: '0 6 * * *'
+
   workflow_dispatch:
     inputs:
       target_date:

@@ -1,9 +1,12 @@
 name: Runyan Step3 - 動画投稿（Instagram リール）
 
 on:
-  schedule:
-    # JST 10:00-22:00 の間、1時間ごとに実行（UTC 1:00-13:00）
-    - cron: '0 1-13 * * *'
+  # schedule:
+
+  #   # JST 10:00-22:00 の間、1時間ごとに実行（UTC 1:00-13:00）
+
+  #   - cron: '0 1-13 * * *'
+
   workflow_dispatch:
     inputs:
       force_post:

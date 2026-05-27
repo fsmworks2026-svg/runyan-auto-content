@@ -846,8 +846,8 @@ Output only the prompt, no explanation.""",
         print("=" * 50)
 
 
-    def _send_briefing_discord(self, ctx: dict, scenario: dict, feed_image_path=None) -> str | None:
-        """ブリーフィング情報を Discord に一括送信し、メッセージIDを返す"""
+    def _send_briefing_discord(self, ctx: dict, scenario: dict, reel_prompt: str = "", reel_video_prompt: str = "") -> str | None:
+        """ブリーフィング情報＋画像生成プロンプトを Discord に送信し、メッセージIDを返す"""
         pw = ctx["reel_post_window"]
         makeup_labels = {"gachi": "ガチメイク", "natural": "ナチュラルメイク", "suppin": "すっぴん"}
         makeup = makeup_labels.get(scenario.get("makeup_style", "natural"), "ナチュラルメイク")
@@ -913,27 +913,31 @@ Output only the prompt, no explanation.""",
                 "inline": True,
             })
 
+        # 画像生成プロンプトをフィールドに追加
+        if reel_prompt:
+            # Discord フィールドは 1024 文字上限
+            prompt_preview = reel_prompt[:1020] + ("…" if len(reel_prompt) > 1020 else "")
+            fields.append({
+                "name": "🎨 リール画像生成プロンプト（gpt-image-2 / Midjourney 等）",
+                "value": f"```\n{prompt_preview}\n```",
+                "inline": False,
+            })
+        if reel_video_prompt:
+            vp_preview = reel_video_prompt[:1020] + ("…" if len(reel_video_prompt) > 1020 else "")
+            fields.append({
+                "name": "🎬 動画プロンプト（ElevenLabs Kling）",
+                "value": f"```\n{vp_preview}\n```",
+                "inline": False,
+            })
+
         embed = {
             "title": f"📅 明日のるーにゃ — {ctx['date_display']}",
             "color": 0x7289DA,
             "fields": fields,
-            "footer": {"text": "✅ でストーリーズ生成開始 | ❌ でスキップ"},
+            "footer": {"text": "手動で画像・動画を作成して投稿してください"},
         }
 
-        # フード画像がある場合は一緒に添付
-        if feed_image_path and Path(feed_image_path).exists():
-            from pathlib import Path as P
-            img_path = P(feed_image_path)
-            mime = "image/jpeg" if img_path.suffix.lower() == ".jpg" else "image/png"
-            import json as _json
-            with open(img_path, "rb") as f:
-                res = requests.post(
-                    DISCORD_WEBHOOK_URL + "?wait=true",
-                    data={"payload_json": _json.dumps({"embeds": [embed]})},
-                    files={"file": (img_path.name, f, mime)},
-                )
-        else:
-            res = requests.post(DISCORD_WEBHOOK_URL + "?wait=true", json={"embeds": [embed]})
+        res = requests.post(DISCORD_WEBHOOK_URL + "?wait=true", json={"embeds": [embed]})
 
         if res.status_code != 200:
             print(f"  ❌ Discord 送信失敗: {res.status_code}")
@@ -941,21 +945,43 @@ Output only the prompt, no explanation.""",
 
         msg_data   = res.json()
         message_id = msg_data.get("id")
-        channel_id = msg_data.get("channel_id")
         print(f"  ✅ ブリーフィング送信完了（メッセージID: {message_id}）")
-
-        # ✅/❌ リアクションを追加
-        bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
-        if message_id and channel_id and bot_token:
-            headers = {"Authorization": f"Bot {bot_token}"}
-            for emoji in ["✅", "❌"]:
-                requests.put(
-                    f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{requests.utils.quote(emoji)}/@me",
-                    headers=headers,
-                )
-            print("  👍 ✅/❌ リアクション追加完了")
-
         return message_id
+
+    def _build_reel_prompt(self, scenario: dict) -> str:
+        """画像API を呼ばずにリール用プロンプト文字列だけ返す"""
+        makeup_style = scenario.get("makeup_style", "natural")
+        makeup_lines = {
+            "gachi": "Glamorous full makeup. Bold eye makeup. Defined lips. Contoured skin.",
+            "natural": "Natural casual chic makeup. Soft rosy cheeks. Coral-beige lips. Light eye makeup. Fresh youthful university student vibe.",
+            "suppin": "No makeup. Bare natural skin. Clean fresh face. Natural lip color.",
+        }
+        makeup_text = makeup_lines.get(makeup_style, makeup_lines["natural"])
+
+        photo_style = scenario.get("photo_style", "selfie")
+        if photo_style == "friend_shot":
+            camera_text = "Candid shot by a friend. Natural perspective. Slightly off-center. Not a selfie."
+        elif photo_style == "mirror_living":
+            camera_text = "Mirror selfie in living room. Full-length mirror. Character reflected holding phone. Full body or 3/4 visible."
+        elif photo_style == "mirror_washroom":
+            camera_text = "Bathroom mirror selfie. Character reflected in washroom mirror holding phone. Bust-up to 3/4 shot."
+        else:
+            camera_text = "Selfie. Front camera. Arm extended. Slight downward angle. Close-up face and upper body."
+
+        outfit = scenario.get("outfit", "simple feminine outfit")
+        scene  = scenario.get("main_shot", scenario.get("setting", ""))
+        mood   = scenario.get("mood", "casual")
+
+        return (
+            f"Ru-nya, 21-year-old Japanese woman. Consistent facial features.\n"
+            f"Long dark brown semi-long hair with natural loose waves. Thin airy bangs.\n"
+            f"{makeup_text}\n"
+            f"Wearing: {outfit}\n"
+            f"Camera: {camera_text}\n"
+            f"Scene: {scene}\n"
+            f"Mood: {mood}\n"
+            f"Photorealistic. Japanese cinematic realism. Warm natural light. 50mm lens. Shallow depth of field. Vertical 9:16."
+        )
 
     def _generate_reel_image(self, scenario: dict, date_str: str) -> Path | None:
         """リール用画像を reel_output/ に生成して保存する。既存ファイルがあればスキップ。"""
@@ -1175,7 +1201,7 @@ Output only the prompt, no explanation.""",
         # current_scenario.json の briefing_date + discord_status で判定する
         scenario_path  = Path("./current_scenario.json")
         date_key       = tomorrow.strftime("%Y%m%d")
-        _sent_statuses = ("pending", "approved", "stories_generated")
+        _sent_statuses = ("pending", "approved", "stories_generated", "sent")
         _existing      = json.loads(scenario_path.read_text(encoding="utf-8")) if scenario_path.exists() else {}
         already_notified = (
             not force
@@ -1213,64 +1239,35 @@ Output only the prompt, no explanation.""",
             json.dump(scenario, f, ensure_ascii=False, indent=2)
         print(f"  ✅ シナリオ: {scenario.get('title')}")
 
-        # 3. リール/フィード(person)画像を先に生成（カジュアル服装参照を確定させる）
-        # ストーリーズ生成より前に実行することで、casual スロットの outfit 参照画像が揃う
-        reel_image_path = None
+        # 3. 画像生成プロンプトを構築（API は呼ばない・手動作成用）
+        reel_prompt = ""
         reel_video_prompt = ""
-        needs_outfit_ref = ctx.get("has_reel") or (ctx.get("has_feed") and ctx.get("feed_type") == "person")
-        if needs_outfit_ref:
+        if ctx.get("has_reel") or (ctx.get("has_feed") and ctx.get("feed_type") == "person"):
             label = "リール" if ctx.get("has_reel") else "フィード(person)"
-            print(f"\n[3/3] {label}画像生成（カジュアル服装参照を先に確定）")
-            reel_image_path = self._generate_reel_image(scenario, ctx["date"])
-            if reel_image_path:
-                scenario["reel_image_path"] = str(reel_image_path)
-                with open(scenario_path, "w", encoding="utf-8") as f:
-                    json.dump(scenario, f, ensure_ascii=False, indent=2)
-                if ctx.get("has_reel"):
-                    print("  📝 動画プロンプト生成中...")
-                    try:
-                        reel_video_prompt = self.generate_video_prompt(scenario)
-                    except Exception as e:
-                        print(f"  ⚠️ 動画プロンプト生成失敗: {e}")
-                        reel_video_prompt = f"{scenario.get('setting')} scene, natural movement, 9:16 vertical"
-            else:
-                print(f"  ⚠️ {label}画像生成失敗（ストーリーズは服装参照なしで生成）")
+            print(f"\n[3/3] {label}画像プロンプト構築")
+            reel_prompt = self._build_reel_prompt(scenario)
+            if ctx.get("has_reel"):
+                print("  📝 動画プロンプト生成中...")
+                try:
+                    reel_video_prompt = self.generate_video_prompt(scenario)
+                except Exception as e:
+                    print(f"  ⚠️ 動画プロンプト生成失敗: {e}")
+                    reel_video_prompt = f"{scenario.get('setting')} scene, natural movement, 9:16 vertical"
         else:
             print("\n[3/3] スキップ（リールなし・フィードfoodまたはnone）")
 
-        # フィード画像生成（food タイプの場合のみブリーフィング時に生成）
-        feed_image_path = None
-        if ctx.get("has_feed") and ctx.get("feed_type") == "food":
-            print("\n[フィード] 料理・カフェ画像生成")
-            import generate_feed as gf
-            feed_image_path = gf.generate_food_image(ctx.get("feed_food_scene", ""), ctx["date"])
-            if feed_image_path:
-                print(f"  ✅ フィード画像: {feed_image_path.name}")
-            else:
-                print("  ⚠️  フィード画像生成失敗（後で手動生成可）")
-
-        # 5. ブリーフィングを Discord に一括送信してメッセージIDを保存
+        # Discord にブリーフィング＋プロンプトを送信
         if already_notified:
-            print("\n[Discord] 送信済みのためスキップ — コンテンツ生成のみ完了")
+            print("\n[Discord] 送信済みのためスキップ")
         else:
-            print("\n[Discord] ブリーフィング送信")
-            message_id = self._send_briefing_discord(ctx, scenario, feed_image_path=feed_image_path)
+            print("\n[Discord] ブリーフィング＋プロンプト送信")
+            message_id = self._send_briefing_discord(ctx, scenario, reel_prompt=reel_prompt, reel_video_prompt=reel_video_prompt)
             if message_id:
-                # リール/フィード(person)画像を送信（✅承認後にストーリーズ生成）
-                if reel_image_path:
-                    self._send_reel_image_discord(reel_image_path, ctx["date"], ctx, scenario, reel_video_prompt)
                 scenario["discord_message_id"] = message_id
-                scenario["discord_status"]     = "pending"
+                scenario["discord_status"]     = "sent"
                 scenario["briefing_date"]      = ctx["date"]
                 with open(scenario_path, "w", encoding="utf-8") as f:
                     json.dump(scenario, f, ensure_ascii=False, indent=2)
-
-            # リールがある日だけ #video-uploads に動画アップロード依頼を送信
-            if ctx.get("has_reel"):
-                print("\n[Discord] 動画アップロード依頼送信")
-                self._notify_video_upload_request(ctx, scenario)
-            else:
-                print("\n[スキップ] 今日はリールなし → 動画依頼なし")
 
         print("\n" + "=" * 55)
         print("✅ ブリーフィング完了 — Discord の ✅ を待っています")
