@@ -1010,15 +1010,20 @@ Output only the prompt, no explanation.""",
         if room_file:
             ref_section += f"\nRoom reference: {room_file}"
 
+        # Discordで受け取ったユーザーへの添付指示（生成プロンプトの前置き）
+        attach_note = f"📎 ChatGPTに送る前にこの画像を添付してください:\n  キャラ: {char_file}"
+        if room_file:
+            attach_note += f"\n  部屋: {room_file}"
+
         room_line = (
-            f"\nPlace the character inside the room from {room_file}. "
+            f"\nPlace the character inside the room from the attached room reference image. "
             f"Keep room layout, furniture, lighting, and colors identical."
         ) if room_file else ""
 
-        return (
-            f"[Project files to use]\n{ref_section}\n\n"
+        prompt_body = (
             f"Face identity consistency is the highest priority. Scene and outfit are secondary.\n\n"
-            f"Use the provided character reference image as the primary identity reference.\n\n"
+            f"Use the attached character image as the primary identity reference. "
+            f"Do not use project files — treat the attached image as the direct input.\n\n"
             f"Maintain:\n"
             f"- exact same face structure\n"
             f"- exact same eye shape and position\n"
@@ -1035,6 +1040,8 @@ Output only the prompt, no explanation.""",
             f"Camera: {camera_text}\n"
             f"Format: Vertical 9:16. Photorealistic."
         )
+
+        return f"{attach_note}\n\n{prompt_body}"
 
     def _build_story_slot_prompt(self, slot: dict, ctx: dict) -> str:
         """ChatGPT プロジェクトファイル参照形式でストーリーズスロット用プロンプトを返す"""
@@ -1068,21 +1075,22 @@ Output only the prompt, no explanation.""",
             room_file   = None
             camera_text = "Selfie or candid snapshot outdoors. Natural lighting."
 
-        ref_section = f"Character reference: {char_file}"
-        if room_file:
-            ref_section += f"\nRoom reference: {room_file}"
-
         label = f"{slot.get('emoji', '')} {slot.get('label', '')}"
 
+        # Discordで受け取ったユーザーへの添付指示（生成プロンプトの前置き）
+        attach_note = f"📎 ChatGPTに送る前にこの画像を添付してください:\n  キャラ: {char_file}"
+        if room_file:
+            attach_note += f"\n  部屋: {room_file}"
+
         room_line = (
-            f"\nPlace the character inside the room from {room_file}. "
+            f"\nPlace the character inside the room from the attached room reference image. "
             f"Keep room layout, furniture, lighting, and colors identical."
         ) if room_file else ""
 
-        return (
-            f"[Project files to use]\n{ref_section}\n\n"
+        prompt_body = (
             f"Face identity consistency is the highest priority. Scene and outfit are secondary.\n\n"
-            f"Use the provided character reference image as the primary identity reference.\n\n"
+            f"Use the attached character image as the primary identity reference. "
+            f"Do not use project files — treat the attached image as the direct input.\n\n"
             f"Maintain:\n"
             f"- exact same face structure\n"
             f"- exact same eye shape and position\n"
@@ -1100,6 +1108,8 @@ Output only the prompt, no explanation.""",
             f"Camera: {camera_text}\n"
             f"Format: Vertical 9:16. Photorealistic."
         )
+
+        return f"{attach_note}\n\n{prompt_body}"
 
     def _generate_reel_image(self, scenario: dict, date_str: str) -> Path | None:
         """リール用画像を reel_output/ に生成して保存する。既存ファイルがあればスキップ。"""
