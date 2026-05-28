@@ -955,80 +955,124 @@ Output only the prompt, no explanation.""",
         return message_id
 
     # ── プロンプトヘッダー（ChatGPT + 素材画像参照用） ──────────────────────
-    _PROMPT_HEADER = (
-        "The attached reference images define this character's identity.\n"
-        "Copy the face, hair, and overall appearance EXACTLY from the reference — do not generate a new face.\n\n"
-        "Maintain:\n"
-        "- exact facial identity from the reference images\n"
-        "- same eye shape, same face proportions, same hair texture\n"
-        "- same room layout if a room reference image is attached\n\n"
-        "Do not beautify into a generic AI influencer.\n"
-        "Preserve natural Japanese realism and everyday-girl appearance."
-    )
+    # キャラ参照ファイル名マップ（ChatGPT プロジェクトにアップロード済み）
+    _CHAR_FILES = {
+        "natural": "runyan_natural.png",
+        "gachi":   "runyan_gachi.png",
+        "suppin":  "runyan_suppin.png",
+    }
+
+    # 部屋参照ファイル名マップ
+    _ROOM_FILES = {
+        ("bedroom",  "morning"): "bedroom_entrance_morning.png",
+        ("bedroom",  "night"):   "bedroom_entrance_night.png",
+        ("living",   "morning"): "living_sofa_morning.png",
+        ("living",   "night"):   "living_sofa_night.png",
+        ("mirror",   "morning"): "living_mirror_morning.png",
+        ("mirror",   "night"):   "living_mirror_night.png",
+        ("washroom", "any"):     "washroom_mirror.png",
+    }
+
+    @staticmethod
+    def _time_suffix(hour_start: int) -> str:
+        """スロット開始時刻から morning / night を返す"""
+        return "night" if hour_start >= 17 else "morning"
 
     def _build_reel_prompt(self, scenario: dict) -> str:
-        """ChatGPT 素材画像参照形式でリール用プロンプトを返す"""
+        """ChatGPT プロジェクトファイル参照形式でリール用プロンプトを返す"""
         makeup_style = scenario.get("makeup_style", "natural")
-        makeup_lines = {
-            "gachi":   "Glamorous full makeup. Bold eye makeup. Defined lips. Contoured skin.",
-            "natural": "Natural casual chic makeup. Soft rosy cheeks. Coral-beige lips. Light eye makeup.",
-            "suppin":  "No makeup. Bare natural skin. Clean fresh face. Natural lip color.",
-        }
-        makeup_text = makeup_lines.get(makeup_style, makeup_lines["natural"])
+        char_file    = self._CHAR_FILES.get(makeup_style, "runyan_natural.png")
 
         photo_style = scenario.get("photo_style", "selfie")
-        if photo_style == "friend_shot":
-            camera_text = "Candid shot by a friend. Natural perspective. Slightly off-center. Not a selfie."
-        elif photo_style == "mirror_living":
+        posting_time = scenario.get("best_posting_time", "")
+        night_hours  = ["17:", "18:", "19:", "20:", "21:", "22:", "23:"]
+        is_night     = any(h in posting_time for h in night_hours)
+        suffix       = "night" if is_night else "morning"
+
+        if photo_style == "mirror_living":
+            room_file   = self._ROOM_FILES[("mirror", suffix)]
             camera_text = "Mirror selfie in living room. Full-length mirror. Character reflected holding phone. Full body or 3/4 visible."
         elif photo_style == "mirror_washroom":
+            room_file   = self._ROOM_FILES[("washroom", "any")]
             camera_text = "Bathroom mirror selfie. Character reflected in washroom mirror holding phone. Bust-up to 3/4 shot."
+        elif photo_style == "friend_shot":
+            room_file   = None
+            camera_text = "Candid shot by a friend. Natural perspective. Slightly off-center. Not a selfie."
         else:
+            room_file   = None
             camera_text = "Selfie. Front camera. Arm extended. Slight downward angle. Close-up face and upper body."
 
         outfit = scenario.get("outfit", "simple feminine outfit")
         scene  = scenario.get("main_shot", scenario.get("setting", ""))
         mood   = scenario.get("mood", "casual")
 
+        ref_section = f"Character reference: {char_file}"
+        if room_file:
+            ref_section += f"\nRoom reference: {room_file}"
+
         return (
-            f"{self._PROMPT_HEADER}\n\n"
+            f"[Project files to use]\n{ref_section}\n\n"
+            f"Use the character reference image for the exact face, hair, and overall appearance — do not generate a new face.\n"
+            + (f"Place the character inside the room from {room_file}. Keep room layout, furniture, lighting, and colors identical.\n" if room_file else "") +
+            f"Do not beautify into a generic AI influencer. Preserve natural Japanese realism.\n\n"
             f"---\n"
             f"Scene: {scene}\n"
             f"Outfit: {outfit}\n"
             f"Camera: {camera_text}\n"
-            f"Makeup: {makeup_text}\n"
             f"Mood: {mood}\n"
             f"Format: Vertical 9:16. Photorealistic. Warm natural light. Shallow depth of field."
         )
 
     def _build_story_slot_prompt(self, slot: dict, ctx: dict) -> str:
-        """ChatGPT 素材画像参照形式でストーリーズスロット用プロンプトを返す"""
+        """ChatGPT プロジェクトファイル参照形式でストーリーズスロット用プロンプトを返す"""
+        no_makeup    = slot.get("no_makeup", False)
+        outfit_type  = slot.get("outfit_type", "casual")
+        hour_start   = slot.get("post_window", [7])[0]
+        suffix       = self._time_suffix(hour_start)
+
+        char_file = self._CHAR_FILES.get("suppin" if no_makeup else "natural")
+
         outfit_map = {
             "casual":    ctx.get("casual_outfit", ""),
             "room_wear": ctx.get("room_wear", ""),
             "pajamas":   ctx.get("pajamas", ""),
         }
-        outfit = outfit_map.get(slot.get("outfit_type", "casual"), ctx.get("casual_outfit", ""))
+        outfit = outfit_map.get(outfit_type, ctx.get("casual_outfit", ""))
 
-        no_makeup = slot.get("no_makeup", False)
-        makeup_text = (
-            "No makeup. Bare natural skin. Fresh clean face."
-            if no_makeup else
-            "Natural casual makeup. Soft rosy cheeks. Light eye makeup."
-        )
+        # 部屋ファイル選択
+        scene_hint = slot.get("scene_hint", "")
+        if outfit_type == "pajamas":
+            if "洗面" in scene_hint or "wash" in scene_hint.lower():
+                room_file = self._ROOM_FILES[("washroom", "any")]
+                camera_text = "Bathroom mirror selfie. Character reflected in washroom mirror holding phone. Bust-up shot."
+            else:
+                room_file = self._ROOM_FILES[("bedroom", suffix)]
+                camera_text = "Casual selfie in bedroom. Relaxed pose. Close-up or half-body."
+        elif outfit_type == "room_wear":
+            room_file   = self._ROOM_FILES[("living", suffix)]
+            camera_text = "Casual selfie in living room. Relaxed natural pose."
+        else:
+            room_file   = None
+            camera_text = "Selfie or candid snapshot outdoors. Natural lighting."
 
-        scene = slot.get("scene_hint", "")
+        ref_section = f"Character reference: {char_file}"
+        if room_file:
+            ref_section += f"\nRoom reference: {room_file}"
+
         label = f"{slot.get('emoji', '')} {slot.get('label', '')}"
 
         return (
-            f"{self._PROMPT_HEADER}\n\n"
+            f"[Project files to use]\n{ref_section}\n\n"
+            f"Use the character reference image for the exact face, hair, and overall appearance — do not generate a new face.\n"
+            + (f"Place the character inside the room from {room_file}. Keep room layout, furniture, lighting, and colors identical.\n" if room_file else "") +
+            f"Do not beautify into a generic AI influencer. Preserve natural Japanese realism.\n\n"
             f"---\n"
             f"Slot: {label}\n"
-            f"Scene: {scene}\n"
+            f"Scene: {scene_hint}\n"
             f"Outfit: {outfit}\n"
-            f"Makeup: {makeup_text}\n"
-            f"Camera: Casual selfie or candid snapshot. Vertical 9:16.\n"
-            f"Mood: everyday, candid, natural"
+            f"Camera: {camera_text}\n"
+            f"Mood: everyday, candid, natural\n"
+            f"Format: Vertical 9:16."
         )
 
     def _generate_reel_image(self, scenario: dict, date_str: str) -> Path | None:
