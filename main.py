@@ -956,13 +956,12 @@ Output only the prompt, no explanation.""",
 
     # ── プロンプトヘッダー（ChatGPT + 素材画像参照用） ──────────────────────
     _PROMPT_HEADER = (
-        "Use the Ru-nya reference images stored in the project as the primary identity reference.\n\n"
+        "The attached reference images define this character's identity.\n"
+        "Copy the face, hair, and overall appearance EXACTLY from the reference — do not generate a new face.\n\n"
         "Maintain:\n"
-        "- the exact same facial identity\n"
-        "- same eye shape\n"
-        "- same facial proportions\n"
-        "- same hair texture\n"
-        "- same room layout if applicable\n\n"
+        "- exact facial identity from the reference images\n"
+        "- same eye shape, same face proportions, same hair texture\n"
+        "- same room layout if a room reference image is attached\n\n"
         "Do not beautify into a generic AI influencer.\n"
         "Preserve natural Japanese realism and everyday-girl appearance."
     )
