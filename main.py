@@ -1010,17 +1010,30 @@ Output only the prompt, no explanation.""",
         if room_file:
             ref_section += f"\nRoom reference: {room_file}"
 
+        room_line = (
+            f"\nPlace the character inside the room from {room_file}. "
+            f"Keep room layout, furniture, lighting, and colors identical."
+        ) if room_file else ""
+
         return (
             f"[Project files to use]\n{ref_section}\n\n"
-            f"Use the character reference image for the exact face, hair, and overall appearance — do not generate a new face.\n"
-            + (f"Place the character inside the room from {room_file}. Keep room layout, furniture, lighting, and colors identical.\n" if room_file else "") +
-            f"Do not beautify into a generic AI influencer. Preserve natural Japanese realism.\n\n"
+            f"Face identity consistency is the highest priority. Scene and outfit are secondary.\n\n"
+            f"Use the provided character reference image as the primary identity reference.\n\n"
+            f"Maintain:\n"
+            f"- exact same face structure\n"
+            f"- exact same eye shape and position\n"
+            f"- exact same nose and mouth proportions\n"
+            f"- same jawline and facial balance\n"
+            f"- same hair texture and bangs\n\n"
+            f"Do not generate a new person.\n"
+            f"Do not beautify into a generic AI influencer.\n"
+            f"Preserve natural Japanese realism and slightly imperfect candid appearance."
+            f"{room_line}\n\n"
             f"---\n"
             f"Scene: {scene}\n"
             f"Outfit: {outfit}\n"
             f"Camera: {camera_text}\n"
-            f"Mood: {mood}\n"
-            f"Format: Vertical 9:16. Photorealistic. Warm natural light. Shallow depth of field."
+            f"Format: Vertical 9:16. Photorealistic."
         )
 
     def _build_story_slot_prompt(self, slot: dict, ctx: dict) -> str:
@@ -1061,18 +1074,31 @@ Output only the prompt, no explanation.""",
 
         label = f"{slot.get('emoji', '')} {slot.get('label', '')}"
 
+        room_line = (
+            f"\nPlace the character inside the room from {room_file}. "
+            f"Keep room layout, furniture, lighting, and colors identical."
+        ) if room_file else ""
+
         return (
             f"[Project files to use]\n{ref_section}\n\n"
-            f"Use the character reference image for the exact face, hair, and overall appearance — do not generate a new face.\n"
-            + (f"Place the character inside the room from {room_file}. Keep room layout, furniture, lighting, and colors identical.\n" if room_file else "") +
-            f"Do not beautify into a generic AI influencer. Preserve natural Japanese realism.\n\n"
+            f"Face identity consistency is the highest priority. Scene and outfit are secondary.\n\n"
+            f"Use the provided character reference image as the primary identity reference.\n\n"
+            f"Maintain:\n"
+            f"- exact same face structure\n"
+            f"- exact same eye shape and position\n"
+            f"- exact same nose and mouth proportions\n"
+            f"- same jawline and facial balance\n"
+            f"- same hair texture and bangs\n\n"
+            f"Do not generate a new person.\n"
+            f"Do not beautify into a generic AI influencer.\n"
+            f"Preserve natural Japanese realism and slightly imperfect candid appearance."
+            f"{room_line}\n\n"
             f"---\n"
             f"Slot: {label}\n"
             f"Scene: {scene_hint}\n"
             f"Outfit: {outfit}\n"
             f"Camera: {camera_text}\n"
-            f"Mood: everyday, candid, natural\n"
-            f"Format: Vertical 9:16."
+            f"Format: Vertical 9:16. Photorealistic."
         )
 
     def _generate_reel_image(self, scenario: dict, date_str: str) -> Path | None:
