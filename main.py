@@ -913,23 +913,6 @@ Output only the prompt, no explanation.""",
                 "inline": True,
             })
 
-        # 画像生成プロンプトをフィールドに追加
-        if reel_prompt:
-            # Discord フィールドは 1024 文字上限
-            prompt_preview = reel_prompt[:1020] + ("…" if len(reel_prompt) > 1020 else "")
-            fields.append({
-                "name": "🎨 リール画像生成プロンプト（gpt-image-2 / Midjourney 等）",
-                "value": f"```\n{prompt_preview}\n```",
-                "inline": False,
-            })
-        if reel_video_prompt:
-            vp_preview = reel_video_prompt[:1020] + ("…" if len(reel_video_prompt) > 1020 else "")
-            fields.append({
-                "name": "🎬 動画プロンプト（ElevenLabs Kling）",
-                "value": f"```\n{vp_preview}\n```",
-                "inline": False,
-            })
-
         embed = {
             "title": f"📅 明日のるーにゃ — {ctx['date_display']}",
             "color": 0x7289DA,
@@ -938,7 +921,6 @@ Output only the prompt, no explanation.""",
         }
 
         res = requests.post(DISCORD_WEBHOOK_URL + "?wait=true", json={"embeds": [embed]})
-
         if res.status_code != 200:
             print(f"  ❌ Discord 送信失敗: {res.status_code}")
             return None
@@ -946,15 +928,52 @@ Output only the prompt, no explanation.""",
         msg_data   = res.json()
         message_id = msg_data.get("id")
         print(f"  ✅ ブリーフィング送信完了（メッセージID: {message_id}）")
+
+        # ── リール画像プロンプトを別メッセージで送信（コピペしやすい形式）──
+        if reel_prompt:
+            label = "リール" if ctx.get("has_reel") else "フィード(person)"
+            reel_msg = f"**🎨 {label}画像プロンプト**\n```\n{reel_prompt}\n```"
+            requests.post(DISCORD_WEBHOOK_URL, json={"content": reel_msg}, timeout=10)
+            print("  ✅ リール画像プロンプト送信完了")
+
+        if reel_video_prompt:
+            video_msg = f"**🎬 動画プロンプト（ElevenLabs Kling）**\n```\n{reel_video_prompt}\n```"
+            requests.post(DISCORD_WEBHOOK_URL, json={"content": video_msg}, timeout=10)
+            print("  ✅ 動画プロンプト送信完了")
+
+        # ── ストーリーズ各スロットのプロンプトを別メッセージで送信 ──
+        for slot in ctx.get("story_slots", []):
+            slot_prompt = self._build_story_slot_prompt(slot, ctx)
+            slot_msg = (
+                f"**{slot.get('emoji','')} ストーリーズ {slot.get('label','')} スロット**\n"
+                f"```\n{slot_prompt}\n```"
+            )
+            requests.post(DISCORD_WEBHOOK_URL, json={"content": slot_msg}, timeout=10)
+        if ctx.get("story_slots"):
+            print(f"  ✅ ストーリーズプロンプト送信完了（{len(ctx['story_slots'])}スロット）")
+
         return message_id
 
+    # ── プロンプトヘッダー（ChatGPT + 素材画像参照用） ──────────────────────
+    _PROMPT_HEADER = (
+        "Use the Ru-nya reference images stored in the project as the primary identity reference.\n\n"
+        "Maintain:\n"
+        "- the exact same facial identity\n"
+        "- same eye shape\n"
+        "- same facial proportions\n"
+        "- same hair texture\n"
+        "- same room layout if applicable\n\n"
+        "Do not beautify into a generic AI influencer.\n"
+        "Preserve natural Japanese realism and everyday-girl appearance."
+    )
+
     def _build_reel_prompt(self, scenario: dict) -> str:
-        """画像API を呼ばずにリール用プロンプト文字列だけ返す"""
+        """ChatGPT 素材画像参照形式でリール用プロンプトを返す"""
         makeup_style = scenario.get("makeup_style", "natural")
         makeup_lines = {
-            "gachi": "Glamorous full makeup. Bold eye makeup. Defined lips. Contoured skin.",
-            "natural": "Natural casual chic makeup. Soft rosy cheeks. Coral-beige lips. Light eye makeup. Fresh youthful university student vibe.",
-            "suppin": "No makeup. Bare natural skin. Clean fresh face. Natural lip color.",
+            "gachi":   "Glamorous full makeup. Bold eye makeup. Defined lips. Contoured skin.",
+            "natural": "Natural casual chic makeup. Soft rosy cheeks. Coral-beige lips. Light eye makeup.",
+            "suppin":  "No makeup. Bare natural skin. Clean fresh face. Natural lip color.",
         }
         makeup_text = makeup_lines.get(makeup_style, makeup_lines["natural"])
 
@@ -973,14 +992,44 @@ Output only the prompt, no explanation.""",
         mood   = scenario.get("mood", "casual")
 
         return (
-            f"Ru-nya, 21-year-old Japanese woman. Consistent facial features.\n"
-            f"Long dark brown semi-long hair with natural loose waves. Thin airy bangs.\n"
-            f"{makeup_text}\n"
-            f"Wearing: {outfit}\n"
-            f"Camera: {camera_text}\n"
+            f"{self._PROMPT_HEADER}\n\n"
+            f"---\n"
             f"Scene: {scene}\n"
+            f"Outfit: {outfit}\n"
+            f"Camera: {camera_text}\n"
+            f"Makeup: {makeup_text}\n"
             f"Mood: {mood}\n"
-            f"Photorealistic. Japanese cinematic realism. Warm natural light. 50mm lens. Shallow depth of field. Vertical 9:16."
+            f"Format: Vertical 9:16. Photorealistic. Warm natural light. Shallow depth of field."
+        )
+
+    def _build_story_slot_prompt(self, slot: dict, ctx: dict) -> str:
+        """ChatGPT 素材画像参照形式でストーリーズスロット用プロンプトを返す"""
+        outfit_map = {
+            "casual":    ctx.get("casual_outfit", ""),
+            "room_wear": ctx.get("room_wear", ""),
+            "pajamas":   ctx.get("pajamas", ""),
+        }
+        outfit = outfit_map.get(slot.get("outfit_type", "casual"), ctx.get("casual_outfit", ""))
+
+        no_makeup = slot.get("no_makeup", False)
+        makeup_text = (
+            "No makeup. Bare natural skin. Fresh clean face."
+            if no_makeup else
+            "Natural casual makeup. Soft rosy cheeks. Light eye makeup."
+        )
+
+        scene = slot.get("scene_hint", "")
+        label = f"{slot.get('emoji', '')} {slot.get('label', '')}"
+
+        return (
+            f"{self._PROMPT_HEADER}\n\n"
+            f"---\n"
+            f"Slot: {label}\n"
+            f"Scene: {scene}\n"
+            f"Outfit: {outfit}\n"
+            f"Makeup: {makeup_text}\n"
+            f"Camera: Casual selfie or candid snapshot. Vertical 9:16.\n"
+            f"Mood: everyday, candid, natural"
         )
 
     def _generate_reel_image(self, scenario: dict, date_str: str) -> Path | None:
