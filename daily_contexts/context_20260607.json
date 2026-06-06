@@ -1,0 +1,84 @@
+{
+  "date": "20260607",
+  "date_display": "2026/6/7（日曜日）",
+  "season": "summer",
+  "season_jp": "夏",
+  "season_weather": "梅雨。じめじめした蒸し暑さ。紫陽花（アジサイ）が咲く。傘が手放せない",
+  "casual_outfit": "Light cotton oversized t-shirt, floral print shorts, breathable slip-on sandals, soft pastel cardigan, minimalistic gold hoop earrings.",
+  "room_wear": "oversized white graphic T-shirt, light gray cotton biker shorts",
+  "pajamas": "white oversized sleep T-shirt with small cartoon cat print, matching pastel shorts",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "small stuffed animal sitting at the corner of the bed",
+  "room_seasonal": "a small hydrangea (ajisai) in a vase on the windowsill",
+  "day_jp": "日曜日",
+  "afternoon": {
+    "label": "インドア・まったり",
+    "scene": "relaxing at home, lazy Sunday on the bed or floor",
+    "outfit_type": "room"
+  },
+  "evening": {
+    "label": "早めに就寝準備",
+    "scene": "early night routine, preparing clothes for Monday",
+    "outfit_type": "room"
+  },
+  "reel_post_window": [
+    16,
+    20
+  ],
+  "has_reel": true,
+  "has_feed": false,
+  "feed_type": "none",
+  "feed_food_scene": "",
+  "feed_post_window": [],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "日曜日の朝 — インドア・まったりに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "room",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "インドア・まったり — relaxing at home, lazy Sunday on the bed or floor"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "room",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "早めに就寝準備 — early night routine, preparing clothes for Monday"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "早めに就寝準備が終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "3/4 side profile: face turned mostly away from camera, bangs falling over one eye, soft unfocused gaze into the distance. Face NOT directly facing the lens."
+}
