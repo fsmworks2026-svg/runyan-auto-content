@@ -1,0 +1,92 @@
+{
+  "date": "20260611",
+  "date_display": "2026/6/11（木曜日）",
+  "season": "summer",
+  "season_jp": "夏",
+  "season_weather": "梅雨。じめじめした蒸し暑さ。紫陽花（アジサイ）が咲く。傘が手放せない",
+  "casual_outfit": "Light linen blouse, pastel midi skirt, denim jacket, white canvas sneakers, oversized tote bag.",
+  "room_wear": "pastel yellow cropped zip-up hoodie and matching wide-leg shorts set",
+  "pajamas": "light cotton pajama set in pale pink gingham-check pattern",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "MacBook Air M2 open on the desk with a few sticky notes around it",
+  "room_seasonal": "a small hydrangea (ajisai) in a vase on the windowsill",
+  "day_jp": "木曜日",
+  "afternoon": {
+    "label": "ゼミ",
+    "scene": "university seminar room, relief and tiredness after the presentation",
+    "story_scene": "campus hallway after seminar presentation, relieved expression, notebook under arm",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "カフェ巡り",
+    "scene": "exploring a cozy new Tokyo cafe, latte art and warm interior",
+    "outfit_type": "casual",
+    "post_window": [
+      14,
+      18
+    ]
+  },
+  "reel_post_window": [
+    17,
+    20
+  ],
+  "has_reel": false,
+  "has_feed": true,
+  "feed_type": "food",
+  "feed_food_scene": "fluffy Japanese soufflé pancakes, fresh strawberries, powdered sugar dusting, pastel cafe plate",
+  "feed_post_window": [
+    13,
+    17
+  ],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "木曜日の朝 — ゼミに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "ゼミ — campus hallway after seminar presentation, relieved expression, notebook under arm"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "カフェ巡り — exploring a cozy new Tokyo cafe, latte art and warm interior"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "カフェ巡りが終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "Mirror selfie: smartphone held up covering the lower half of face — only sleepy eyes, messy bangs, and bedhead visible above the phone screen. Screen faintly reflecting the room."
+}
