@@ -1,28 +1,28 @@
 {
-  "title": "梅雨の朝、ゼミでの気づき",
-  "scenario": "るーにゃは梅雨の蒸し暑さが続く6月の朝、大学のゼミに参加します。教室に着くと、窓際の席を選び、少しでも涼しい風を感じようとします。友達と一緒にプレゼンテーションの準備をする中で、ふと「こんなに頑張ってるけど、家に帰ると一人なんだよね」と本音を漏らします。でも、ゼミが終わったあとに友達とランチに行くことになり、少しだけ心が軽くなる瞬間も。",
-  "caption": "ゼミの後のランチが待ち遠しい🍴#大学生 #ぼっちあるある #梅雨ファッション",
-  "mood": "relatable",
-  "setting": "大学のゼミ室",
+  "title": "自由気ままな午後の街歩き",
+  "scenario": "るーにゃは休日の午後、街をぶらぶらしながら新しいカフェを見つける。窓側の席でアイスコーヒーを飲みつつ、ノートに日記を書く。ふとした瞬間、友達からのメッセージを見て微笑む。",
+  "caption": "#リラックスアフタヌーン #お気に入りの場所探し ☕️ 今日は自由に街を歩いて、新しいカフェを発見！皆さんのおすすめのカフェ、教えてください✨",
+  "mood": "relaxing",
+  "setting": "街中の新しいカフェ",
   "makeup_style": "natural",
   "photo_style": "selfie",
-  "outfit": "Flowy pastel sundress, denim jacket, white espadrilles, delicate gold necklace, oversized tote bag.",
-  "key_dialogue": "「こんなに頑張ってるけど、家に帰ると一人なんだよね」",
+  "outfit": "Light linen sundress, denim jacket, woven straw bag, white canvas slip-ons, oversized sunglasses.",
+  "key_dialogue": "新しい場所を見つけると、自分も新しくなれる気がする。",
   "save_reason": "コーディネート参考になる",
-  "share_element": "ぼっち感に共感する一言",
-  "interactive_element": "あなたもゼミ後のランチ好き？",
-  "main_shot": "ゼミ室の窓際で、ノートにメモを取りながら考え込む様子",
-  "best_posting_time": "12:00〜13:00。ランチタイムにぴったり。",
+  "share_element": "新しいカフェを見つけたときのワクワク感",
+  "interactive_element": "「皆さんのおすすめのカフェ、教えてください！」という質問",
+  "main_shot": "窓際の席でアイスコーヒーを片手に日記をつけているシーン",
+  "best_posting_time": "15:00〜17:00。午後のひと息つく時間帯にぴったり。",
   "hashtags": [
     "#るーにゃ",
     "#大学生",
-    "#梅雨のファッション",
-    "#ゼミあるある"
+    "#カフェ巡り",
+    "#コーディネート"
   ],
   "has_reel": false,
   "has_feed": true,
   "feed_type": "person",
-  "discord_message_id": "1516046765458067559",
+  "discord_message_id": "1516396043447570586",
   "discord_status": "sent",
-  "briefing_date": "20260616"
+  "briefing_date": "20260617"
 }
