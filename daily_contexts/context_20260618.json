@@ -1,0 +1,89 @@
+{
+  "date": "20260618",
+  "date_display": "2026/6/18（木曜日）",
+  "season": "summer",
+  "season_jp": "夏",
+  "season_weather": "梅雨。じめじめした蒸し暑さ。紫陽花（アジサイ）が咲く。傘が手放せない",
+  "casual_outfit": "Flowy floral sundress, denim jacket, tan espadrilles, minimalist crossbody bag, oversized sunglasses.",
+  "room_wear": "soft pink spaghetti-strap camisole top, loose cream linen wide pants",
+  "pajamas": "soft lavender silk-look camisole and wide-leg shorts pajama set",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "empty coffee mug and phone on charging cable beside the MacBook",
+  "room_seasonal": "a small hydrangea (ajisai) in a vase on the windowsill",
+  "day_jp": "木曜日",
+  "afternoon": {
+    "label": "ゼミ",
+    "scene": "university seminar room, relief and tiredness after the presentation",
+    "story_scene": "campus hallway after seminar presentation, relieved expression, notebook under arm",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "スタバ作業",
+    "scene": "at Starbucks, MacBook Air open with a custom seasonal drink beside it",
+    "outfit_type": "casual",
+    "post_window": [
+      14,
+      17
+    ]
+  },
+  "reel_post_window": [
+    17,
+    20
+  ],
+  "has_reel": true,
+  "has_feed": false,
+  "feed_type": "none",
+  "feed_food_scene": "",
+  "feed_post_window": [],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "木曜日の朝 — ゼミに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "ゼミ — campus hallway after seminar presentation, relieved expression, notebook under arm"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "スタバ作業 — at Starbucks, MacBook Air open with a custom seasonal drink beside it"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "スタバ作業が終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "Lying in bed: white fluffy duvet pulled up to the nose — only half-open tired eyes and disheveled bangs peek out above the blanket edge. Warm ambient lamp light."
+}
