@@ -1,0 +1,87 @@
+{
+  "date": "20260705",
+  "date_display": "2026/7/5（日曜日）",
+  "season": "summer",
+  "season_jp": "夏",
+  "season_weather": "真夏。猛暑。夏祭り・花火大会シーズン。半袖・ワンピース・サンダル",
+  "casual_outfit": "Soft pastel tank top, flowy floral midi skirt, lightweight cardigan, and comfy slip-on sandals.",
+  "room_wear": "soft pink spaghetti-strap camisole top, loose cream linen wide pants",
+  "pajamas": "soft lavender silk-look camisole and wide-leg shorts pajama set",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "MacBook Air M2 open on the desk with a few sticky notes around it",
+  "room_seasonal": "a small electric fan on the shelf, an iced drink sweating on the desk, a wind chime",
+  "day_jp": "日曜日",
+  "afternoon": {
+    "label": "インドア・まったり",
+    "scene": "relaxing at home, lazy Sunday on the bed or floor",
+    "outfit_type": "room"
+  },
+  "evening": {
+    "label": "早めに就寝準備",
+    "scene": "early night routine, preparing clothes for Monday",
+    "outfit_type": "room"
+  },
+  "reel_post_window": [
+    16,
+    20
+  ],
+  "has_reel": false,
+  "has_feed": true,
+  "feed_type": "food",
+  "feed_food_scene": "avocado toast with poached egg and microgreens on white ceramic plate, morning brunch cafe",
+  "feed_post_window": [
+    13,
+    17
+  ],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "日曜日の朝 — インドア・まったりに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "room",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "インドア・まったり — relaxing at home, lazy Sunday on the bed or floor"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "room",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "早めに就寝準備 — early night routine, preparing clothes for Monday"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "早めに就寝準備が終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "Mirror selfie: smartphone held up covering the lower half of face — only sleepy eyes, messy bangs, and bedhead visible above the phone screen. Screen faintly reflecting the room."
+}
