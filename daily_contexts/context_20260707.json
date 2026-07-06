@@ -1,0 +1,92 @@
+{
+  "date": "20260707",
+  "date_display": "2026/7/7（火曜日）",
+  "season": "summer",
+  "season_jp": "夏",
+  "season_weather": "真夏。猛暑。夏祭り・花火大会シーズン。半袖・ワンピース・サンダル",
+  "casual_outfit": "Flowy floral midi dress, denim jacket, white slip-on sandals, minimal silver jewelry, and a woven tote bag.",
+  "room_wear": "soft pink spaghetti-strap camisole top, loose cream linen wide pants",
+  "pajamas": "soft lavender silk-look camisole and wide-leg shorts pajama set",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "small stuffed animal sitting at the corner of the bed",
+  "room_seasonal": "a small electric fan on the shelf, an iced drink sweating on the desk, a wind chime",
+  "day_jp": "火曜日",
+  "afternoon": {
+    "label": "午前ゼミ",
+    "scene": "university seminar room, morning session with focused discussion and presentation",
+    "story_scene": "campus corridor right after morning seminar, stretching and looking relieved, holding notebook",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "推し活",
+    "scene": "at home watching anime or unboxing merch, sitting on bed with excitement",
+    "outfit_type": "room",
+    "post_window": [
+      20,
+      23
+    ]
+  },
+  "reel_post_window": [
+    13,
+    17
+  ],
+  "has_reel": false,
+  "has_feed": true,
+  "feed_type": "person",
+  "feed_food_scene": "",
+  "feed_post_window": [
+    18,
+    22
+  ],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "火曜日の朝 — 午前ゼミに向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "午前ゼミ — campus corridor right after morning seminar, stretching and looking relieved, holding notebook"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "room",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "推し活 — at home watching anime or unboxing merch, sitting on bed with excitement"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "推し活が終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "3/4 side profile: face turned mostly away from camera, bangs falling over one eye, soft unfocused gaze into the distance. Face NOT directly facing the lens."
+}
