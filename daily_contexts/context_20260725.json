@@ -1,0 +1,87 @@
+{
+  "date": "20260725",
+  "date_display": "2026/7/25（土曜日）",
+  "season": "summer",
+  "season_jp": "夏",
+  "season_weather": "真夏。猛暑。夏祭り・花火大会シーズン。半袖・ワンピース・サンダル",
+  "casual_outfit": "Flowy floral sundress, denim jacket, straw hat, white espadrilles, minimalistic crossbody bag.",
+  "room_wear": "soft pink spaghetti-strap camisole top, loose cream linen wide pants",
+  "pajamas": "soft lavender silk-look camisole and wide-leg shorts pajama set",
+  "room_base": "Tokyo 6-tatami one-room apartment. White bed cover, natural wood bed frame. White desk near the window with a MacBook Air M2 in Starlight. Beige lace curtains. White walls with a few postcards pinned. Warm-colored table lamp.",
+  "room_clutter": "small stuffed animal sitting at the corner of the bed",
+  "room_seasonal": "a small electric fan on the shelf, an iced drink sweating on the desk, a wind chime",
+  "day_jp": "土曜日",
+  "afternoon": {
+    "label": "自由（外出）",
+    "scene": "shopping at a shopping mall or walking around a busy shopping street",
+    "outfit_type": "casual"
+  },
+  "evening": {
+    "label": "バイト（週末シフト）",
+    "scene": "leaving the cafe after weekend work shift",
+    "outfit_type": "casual"
+  },
+  "reel_post_window": [
+    12,
+    16
+  ],
+  "has_reel": false,
+  "has_feed": true,
+  "feed_type": "person",
+  "feed_food_scene": "",
+  "feed_post_window": [
+    18,
+    22
+  ],
+  "story_slots": [
+    {
+      "id": "morning",
+      "label": "朝",
+      "emoji": "🌅",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        7,
+        11
+      ],
+      "scene_hint": "土曜日の朝 — 自由（外出）に向けて準備中"
+    },
+    {
+      "id": "afternoon",
+      "label": "昼",
+      "emoji": "☀️",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        11,
+        18
+      ],
+      "scene_hint": "自由（外出） — shopping at a shopping mall or walking around a busy shopping street"
+    },
+    {
+      "id": "evening",
+      "label": "夕方",
+      "emoji": "🌆",
+      "outfit_type": "casual",
+      "no_makeup": false,
+      "post_window": [
+        18,
+        22
+      ],
+      "scene_hint": "バイト（週末シフト） — leaving the cafe after weekend work shift"
+    },
+    {
+      "id": "night",
+      "label": "深夜",
+      "emoji": "🌙",
+      "outfit_type": "pajamas",
+      "no_makeup": true,
+      "post_window": [
+        22,
+        24
+      ],
+      "scene_hint": "バイト（週末シフト）が終わってお疲れ様 — winding down for the night"
+    }
+  ],
+  "face_conceal": "3/4 side profile: face turned mostly away from camera, bangs falling over one eye, soft unfocused gaze into the distance. Face NOT directly facing the lens."
+}
